@@ -6,11 +6,47 @@
 
 ---
 
+## [Unreleased] — 2026-06-10 (续)
+
+### 本次会话新增
+
+#### 对象存储（storage 包）
+- **StorageServiceRouter** —— `@Primary` 路由 Bean，通过 `ObjectProvider` 懒加载当前激活的实现，避免 `@ConditionalOnProperty` 条件装配下出现 0 个 Bean 导致启动失败
+- 三个实现（LocalStorageService / MinioStorageService / AliyunOssStorageService）由 storage.type 决定激活，路由统一对外暴露 StorageService 接口
+- 业务代码只需 `@Autowired StorageService storageService` 即可
+
+#### 用户/角色管理（user 包）
+- **UserService** —— 分页查询（含 deptName 批量关联 + 关键词模糊匹配）/ 详情 / 启用 / 禁用
+- **UserController** —— 4 个端点（GET 列表 / GET 详情 / POST 启用禁用）；MANAGER 自动按本部门过滤
+- **RoleService** —— 改角色（校验：不能改自己、至少保留 1 个 ADMIN、role 必须是合法枚举）/ 查询 / 统计
+- **RoleController** —— GET 角色 / PUT 改角色（@AuditLog + @PreAuthorize('hasRole ADMIN')）/ GET 角色统计
+- 改角色时自动标记 `is_manual_role=true`，企微同步不会覆盖（与 WeWorkSyncService 配套）
+
+#### 前端
+- **api/user.ts** —— 7 个 API 封装（listUsers / getUserById / disableUser / enableUser / getUserRole / changeUserRole / getRoleStats）
+- **AdminView.vue** —— 完整重写：3 张角色统计卡片 + 筛选栏（关键词/角色/状态）+ el-table 表格 + 分页 + 改角色 el-dialog + 启用/禁用二次确认；用 `v-permission="['ADMIN']"` 保护敏感操作
+
+#### 测试
+- **ArchiveServiceTest** —— 11 个 case 覆盖：功能开关、分布式锁（成功/失败/Redis 异常降级）、单批归档（正常流/插入成功但反查为空）、统计透传、权限过滤（ADMIN/MANAGER 部门空/MANAGER 有部门/EMPLOYEE/未登录 401）
+
+#### 文档
+- **docs/DEPLOYMENT.md** —— Docker Compose 部署完整指南
+- **docs/OPERATIONS.md** —— 监控/日志/灾备/扩容手册
+
+#### 运维
+- **k8s/** —— 10 个 yaml（namespace / configmap / secret / mysql-statefulset / redis-deployment / backend-deployment / frontend-deployment / ingress / kustomization / README）
+
+### 后续风险
+- 后端仍未实际编译验证（环境无 jdk/mvn）—— 本次新增 6 个 Java 文件全部基于现有代码风格静态编写，**强烈建议部署环境跑一次 `mvn clean compile -DskipTests`**
+- MinIO / Aliyun OSS 实现为 Stub（抛 UnsupportedOperationException），需引入对应 SDK 后实现
+
+---
+
 ## [Unreleased] — 2026-06-10
 
 ### ⚠️ 重要说明
 
-本次会话为**首次入仓**（initial commit），所有变更一次性合入。下次发布版本（v1.0.0）会基于本次内容。
+本会话之前的累积变更一次性合入。下次发布版本（v1.0.0）会基于本系列内容。
 
 ### Added（新增）
 

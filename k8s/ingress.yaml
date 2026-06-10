@@ -1,0 +1,69 @@
+# ============================================================
+# Ingress: 外部访问入口
+# ------------------------------------------------------------
+# 前置条件（**必须先装好**）：
+#   1. cert-manager
+#      kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.4/cert-manager.yaml
+#   2. nginx-ingress controller（或 traefik）
+#      kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.0/deploy/static/provider/cloud/deploy.yaml
+#   3. ClusterIssuer（Let's Encrypt staging/prod）
+#      详见 https://cert-manager.io/docs/configuration/acme/
+# ------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: task-ingress
+  namespace: task-system
+  labels:
+    app: task-system
+  annotations:
+    # nginx-ingress 控制器
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/proxy-body-size: "20m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    # cert-manager 自动签发 Let's Encrypt 证书
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    # 强制 HTTPS（可选）
+    # nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  # 域名占位符 - 部署前请改为真实域名
+  # 多个域名可一并加在 hosts 数组里
+  tls:
+    - hosts:
+        - <YOUR_DOMAIN>
+        # - www.<YOUR_DOMAIN>
+      secretName: task-tls
+  rules:
+    - host: <YOUR_DOMAIN>
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-service
+                port:
+                  number: 80
+---
+# ------------------------------------------------------------
+# 可选：Let's Encrypt ClusterIssuer（生产推荐）
+# ------------------------------------------------------------
+# 如果你的集群还没有 ClusterIssuer，可以一起 apply 进来；
+# 否则请删除本块并使用现有的 Issuer 名称。
+# ------------------------------------------------------------
+# apiVersion: cert-manager.io/v1
+# kind: ClusterIssuer
+# metadata:
+#   name: letsencrypt-prod
+# spec:
+#   acme:
+#     server: https://acme-v02.api.letsencrypt.org/directory
+#     email: <YOUR_EMAIL>          # 证书过期通知邮箱
+#     privateKeySecretRef:
+#       name: letsencrypt-prod
+#     solvers:
+#       - http01:
+#           ingress:
+#             class: nginx

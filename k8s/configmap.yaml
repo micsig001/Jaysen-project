@@ -1,0 +1,52 @@
+# ============================================================
+# ConfigMap: 任务系统非敏感配置
+# ------------------------------------------------------------
+# 用途：存放 MySQL / Redis 主机端口、企业微信 Corp/AppId 等
+#       不需要保密的配置项
+#
+# ⚠️ 注意：本文件不包含任何密码 / 密钥 / Token。
+#         敏感信息统一在 secret.yaml 中管理。
+#
+# 使用方式：
+#   kubectl apply -f configmap.yaml
+#   # 或（推荐）：
+#   kubectl apply -k k8s/
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: task-config
+  namespace: task-system
+  labels:
+    app: task-config
+    app.kubernetes.io/component: config
+data:
+  # ---- Spring Boot 运行环境 ----
+  # 激活 application-prod.yml
+  SPRING_PROFILES_ACTIVE: "prod"
+
+  # ---- MySQL 连接信息（不含密码）----
+  # 通过 DNS 访问 StatefulSet 创建的 headless service
+  # mysql-0.mysql-service.task-system.svc.cluster.local
+  # 同 namespace 内可直接简写为 mysql-service
+  DB_HOST: "mysql-service"
+  DB_PORT: "3306"
+  DB_NAME: "task_system"
+
+  # ---- Redis 连接信息（不含密码）----
+  # 通过 DNS 访问 Deployment 对应的 ClusterIP service
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+
+  # ---- 企业微信集成配置 ----
+  # 从企业微信管理后台「我的企业 → CorpID」获取
+  WEWORK_CORP_ID: "<YOUR_CORP_ID>"
+  # 从企业微信管理后台「应用管理 → 自建应用 → AgentId」获取
+  WEWORK_AGENT_ID: "<YOUR_AGENT_ID>"
+
+  # ---- 前端基础 URL（用于 OAuth 回调地址拼接）----
+  # ⚠️ 必须与 Ingress 域名一致，且能被企微后台访问
+  APP_FRONTEND_BASE_URL: "https://<YOUR_DOMAIN>"
+
+  # ---- JVM 调优（可选）----
+  # JAVA_OPTS: "-Xms512m -Xmx2g -XX:+UseG1GC"

@@ -1,0 +1,164 @@
+# ============================================================
+# Backend Deployment + ClusterIP Service
+# ------------------------------------------------------------
+# 特点：
+#   - 2 副本（高可用）
+#   - 滚动更新（maxSurge=1, maxUnavailable=0 零停机）
+#   - 配置走 envFrom：ConfigMap + Secret
+#   - 健康检查 /actuator/health（端口 8080）
+#   - 初始延迟 60s（Spring Boot 启动 + Flyway 迁移需要时间）
+#   - 资源：requests 512Mi/500m, limits 1Gi/1
+# ============================================================
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+  namespace: task-system
+  labels:
+    app: backend
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+  selector:
+    app: backend
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: task-system
+  labels:
+    app: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # 滚动更新：先起 1 个新 Pod，再停 1 个旧 Pod，零停机
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      # 等 MySQL、Redis 就绪后再启动 backend（避免冷启动连不上）
+      initContainers:
+        - name: wait-for-mysql
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for MySQL ${DB_HOST}:${DB_PORT}..."
+              until nc -z "${DB_HOST}" "${DB_PORT}"; do
+                sleep 3
+              done
+              echo "MySQL is up"
+          envFrom:
+            - configMapRef:
+                name: task-config
+        - name: wait-for-redis
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Redis ${REDIS_HOST}:${REDIS_PORT}..."
+              until nc -z "${REDIS_HOST}" "${REDIS_PORT}"; do
+                sleep 3
+              done
+              echo "Redis is up"
+          envFrom:
+            - configMapRef:
+                name: task-config
+      containers:
+        - name: backend
+          # ⚠️ 生产请改为具体版本号，例如 task-backend:1.2.3
+          image: <YOUR_REGISTRY>/task-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            # Spring Boot 直接读取 SPRING_DATASOURCE_PASSWORD 等
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:mysql://$(DB_HOST):$(DB_PORT)/$(DB_NAME)?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true"
+            - name: SPRING_DATASOURCE_USERNAME
+              value: "root"
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: task-secret
+                  key: DB_PASSWORD
+            - name: SPRING_REDIS_HOST
+              value: "$(REDIS_HOST)"
+            - name: SPRING_REDIS_PORT
+              value: "$(REDIS_PORT)"
+            - name: SPRING_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: task-secret
+                  key: REDIS_PASSWORD
+            - name: APP_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: task-secret
+                  key: JWT_SECRET
+            - name: APP_WEWORK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: task-secret
+                  key: WEWORK_SECRET
+            # JVM 调优
+            - name: JAVA_OPTS
+              value: "-Xms512m -Xmx2g -XX:+UseG1GC -XX:+HeapDumpOnOutOfMemoryError"
+          # 用 envFrom 注入 ConfigMap 其余字段（DB_HOST/PORT/NAME、
+          # REDIS_HOST/PORT、WEWORK_CORP_ID、WEWORK_AGENT_ID、SPRING_PROFILES_ACTIVE）
+          envFrom:
+            - configMapRef:
+                name: task-config
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1"
+          # 启动探针：放宽到 10 分钟，给 Spring Boot + Flyway 足够时间
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            periodSeconds: 10
+            failureThreshold: 60
+          # 存活探针：每 30s 探一次，失败 3 次重启
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          # 就绪探针：每 10s 探一次，初始延迟 30s
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+      # 镜像拉取密钥（如使用私有仓库，取消注释并配置）
+      # imagePullSecrets:
+      #   - name: regcred

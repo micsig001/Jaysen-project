@@ -1,0 +1,105 @@
+# ============================================================
+# Frontend Deployment + ClusterIP Service
+# ------------------------------------------------------------
+# 特点：
+#   - 2 副本（高可用）
+#   - nginx:alpine 容器把 dist/ 当静态站点服务
+#   - 反代 /api/* 到 backend-service
+#   - nginx 配置通过 ConfigMap 挂载
+#   - 资源：requests 128Mi/100m, limits 256Mi/200m
+# ============================================================
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: task-system
+  labels:
+    app: frontend
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      protocol: TCP
+  selector:
+    app: frontend
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: task-system
+  labels:
+    app: frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: frontend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          # ⚠️ 生产请改为具体版本号
+          image: <YOUR_REGISTRY>/task-frontend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          # 就绪：访问自定义健康端点
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          # 存活：访问首页
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+              readOnly: true
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+              readOnly: true
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: frontend-nginx-config
+            items:
+              - key: nginx.conf
+                path: nginx.conf
+              - key: default.conf
+                path: default.conf
+      # 镜像拉取密钥（如使用私有仓库，取消注释并配置）
+      # imagePullSecrets:
+      #   - name: regcred

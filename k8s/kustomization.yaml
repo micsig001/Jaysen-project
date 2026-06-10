@@ -1,0 +1,54 @@
+# ============================================================
+# Kustomization: 一键部署入口
+# ------------------------------------------------------------
+# 使用：
+#   kubectl apply -k k8s/
+#
+# 删除（**会删除 PVC，慎用**）：
+#   kubectl delete -k k8s/
+# ============================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# 部署的命名空间
+namespace: task-system
+
+# 资源引用顺序：先 namespace / config / secret
+# 再 mysql（StatefulSet 需先就绪）→ redis → backend → frontend → ingress
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secret.yaml
+  - mysql-statefulset.yaml
+  - redis-deployment.yaml
+  - backend-deployment.yaml
+  - frontend-nginx-configmap.yaml
+  - frontend-deployment.yaml
+  - ingress.yaml
+
+# 通用 label，自动打到所有资源上
+labels:
+  - includeSelectors: true
+    pairs:
+      app.kubernetes.io/part-of: task-system
+      app.kubernetes.io/managed-by: kustomize
+
+# 通用注解
+annotations:
+  app.kubernetes.io/managed-by: kustomize
+
+# ------------------------------------------------------------
+# 镜像覆盖（如需在 CI 中通过命令行指定镜像 tag）：
+#   kubectl apply -k k8s/ \
+#     --enable-helm \
+#     # 或使用 --image 单独覆盖
+#   kubectl set image -n task-system deployment/backend \
+#     backend=your-registry/task-backend:v1.2.3
+# ------------------------------------------------------------
+images:
+  - name: <YOUR_REGISTRY>/task-backend
+    newName: <YOUR_REGISTRY>/task-backend
+    newTag: latest
+  - name: <YOUR_REGISTRY>/task-frontend
+    newName: <YOUR_REGISTRY>/task-frontend
+    newTag: latest

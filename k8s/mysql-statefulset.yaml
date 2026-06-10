@@ -1,0 +1,131 @@
+# ============================================================
+# MySQL 8.0 StatefulSet + Headless Service
+# ------------------------------------------------------------
+# 特点：
+#   - 1 副本（生产建议外接 RDS / Cloud SQL，本清单用于自建）
+#   - 20Gi PVC 持久化数据卷
+#   - 密码从 Secret 注入
+#   - 健康检查用 mysqladmin ping
+#   - 资源限制：memory 1Gi, cpu 1
+#
+# ⚠️ 注意：
+#   1. replicas=1 不要扩，StatefulSet 多副本需配合主从集群方案
+#   2. PVC 不会随 StatefulSet 删除而回收，删除 PVC 才会清数据
+#   3. 启动后 backend 才会通过 Flyway 自动建表
+# ============================================================
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-service
+  namespace: task-system
+  labels:
+    app: mysql
+spec:
+  # Headless service：让 Pod 有稳定 DNS 主机名 mysql-0.mysql-service
+  clusterIP: None
+  ports:
+    - name: mysql
+      port: 3306
+      targetPort: 3306
+      protocol: TCP
+  selector:
+    app: mysql
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql
+  namespace: task-system
+  labels:
+    app: mysql
+spec:
+  serviceName: mysql-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      # 首次启动需较长时间加载数据目录
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: mysql
+          image: mysql:8.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: mysql
+              containerPort: 3306
+              protocol: TCP
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: task-secret
+                  key: DB_PASSWORD
+            - name: MYSQL_DATABASE
+              value: "task_system"
+            # 兼容部分应用的方言设置
+            - name: MYSQL_ROOT_HOST
+              value: "%"
+            # 字符集（与建库脚本一致）
+            - name: MYSQL_CHARSET
+              value: "utf8mb4"
+            - name: MYSQL_COLLATION
+              value: "utf8mb4_unicode_ci"
+          args:
+            - --character-set-server=utf8mb4
+            - --collation-server=utf8mb4_unicode_ci
+            - --default-authentication-plugin=mysql_native_password
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1"
+          # 存活探针：mysqladmin ping
+          livenessProbe:
+            exec:
+              command: ["mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          # 就绪探针：能登录即视为就绪
+          readinessProbe:
+            exec:
+              command: ["mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          # 启动探针：放宽到 10 分钟，给首次初始化足够时间
+          startupProbe:
+            exec:
+              command: ["mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+            periodSeconds: 10
+            failureThreshold: 30
+          volumeMounts:
+            - name: mysql-data
+              mountPath: /var/lib/mysql
+            - name: mysql-conf
+              mountPath: /etc/mysql/conf.d
+      volumes:
+        - name: mysql-conf
+          emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: mysql-data
+        labels:
+          app: mysql
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        # 生产建议用 storageClassName 显式指定
+        # 例如：storageClassName: gp3 / ssd
+        resources:
+          requests:
+            storage: 20Gi

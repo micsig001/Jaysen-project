@@ -20,7 +20,7 @@
 
 ---
 
-## 2. 已完成的功能（约 70%）
+## 2. 已完成的功能（约 90%）
 
 ### 核心模块 ✅
 - [x] Spring Boot 工程骨架 + 多环境配置
@@ -37,48 +37,46 @@
 - [x] Swagger / OpenAPI 3.0（springdoc-openapi 2.3.0）
 - [x] 任务 Service 层重构（Controller 不再直调 Mapper）
 - [x] 可视化最小版（单人辐射图 + 多人全景图 + ECharts Graph force 布局）
+- [x] 对象存储模块（`storage/` 包，4 文件 + Router，MinIO/OSS 仍为 Stub）
+- [x] 用户/角色管理（`user/` 包，7 后端 + 2 前端）
 
-### 单元测试（4 个文件）
+### 单元测试（5 个文件）
 - [x] `IdempotencyAspectTest`（4 case）
 - [x] `DesensitizationUtilTest`（6 case）
 - [x] `AuditLogAspectTest`（3 case）
 - [x] `TaskStateMachineServiceTest`（14 case）
+- [x] `ArchiveServiceTest`（11 case：双防雷/分布式锁/权限过滤）
 
 ---
 
-## 3. 待完成的功能（约 30%）
+## 3. 待完成的功能（约 10%）
 
 ### 整模块缺失
-- [ ] **对象存储**（`storage/` 包）—— 4 个文件未实现
-  - `StorageService` 接口
-  - `LocalStorageService` / `MinioStorageService` / `AliyunOssStorageService` 三实现
-  - 通过 `storage.type` 配置动态注入
-  - **影响**：任务附件功能不可用
-  - **优先级**：P1（如果不需要附件可后置）
+- [x] ~~对象存储（`storage/` 包）~~ ✅ 已完成（4 文件 + Router）
+  - `StorageService` / `StorageProperties` / `LocalStorageService`（完整实现）
+  - `MinioStorageService` / `AliyunOssStorageService`（Stub，抛 UnsupportedOperationException）
+  - `StorageServiceRouter` —— `@Primary` 路由 Bean，通过 `ObjectProvider` 懒加载
+  - **注**：MinIO / OSS 真实接入需引入对应 SDK（pom.xml 当前未加）
 
-- [ ] **用户/角色管理**（`user/` 包）—— 8 个文件未实现
-  - 后端：`UserService` / `UserController` / `RoleService`
-  - 端点：`GET /api/users/{userId}/role`、`PUT /api/users/{userId}/role`
-  - 前端：`AdminView.vue`（当前是 395 字节占位）
-  - **影响**：管理员无法手动调整用户角色
-  - **优先级**：P1
+- [x] ~~用户/角色管理（`user/` 包）~~ ✅ 已完成（7 个后端 + 2 个前端文件）
+  - 后端：`UserService` / `UserController` / `RoleService` / `RoleController` / 3 个 DTO
+  - 前端：`api/user.ts`（7 个 API）+ `AdminView.vue`（完整 UI，含统计卡片/筛选/表格/分页/改角色弹窗/启停）
 
 ### 测试覆盖
-- [ ] `ArchiveServiceTest`（双防雷逻辑复杂，需要覆盖）
+- [x] ~~`ArchiveServiceTest`~~ ✅ 已完成（11 case：双防雷、分布式锁、权限过滤）
 - [ ] 集成测试（MockMvc）
 - [ ] E2E 测试（Cypress / Playwright）
 
 ### 文档
-- [ ] `README.md` 升级（5/19 旧版）—— 项目介绍 + 快速启动 + 架构图
-- [ ] `docs/DEPLOYMENT.md` —— Docker Compose 部署
-- [ ] `docs/OPERATIONS.md` —— 监控告警 / 日志 / 灾备 / 扩容
-- [ ] `docs/API.md` —— REST API 文档（Swagger 已生成 OpenAPI JSON）
-- [ ] `CHANGELOG.md` —— 记录每次会话的改动
+- [x] ~~`docs/DEPLOYMENT.md`~~ ✅
+- [x] ~~`docs/OPERATIONS.md`~~ ✅
+- [x] ~~`CHANGELOG.md` 持续记录~~ ✅
+- [ ] `docs/API.md` —— REST API 文档（Swagger 已生成 OpenAPI JSON，可导出）
 
 ### 运维 / CI/CD
-- [ ] GitHub Actions CI（自动 `mvn compile` + 前端 `npm run build`）
+- [x] ~~GitHub Actions CI~~ ✅ `.github/workflows/ci.yml`
 - [ ] main 分支保护（防 force push）
-- [ ] K8s 部署清单（`deployment.yaml` / `service.yaml` / `ingress.yaml`）
+- [x] ~~K8s 部署清单~~ ✅ `k8s/` 10 个 yaml + README
 - [ ] 限流（防爆破）
 - [ ] Spring Boot Actuator（健康检查端点）
 
