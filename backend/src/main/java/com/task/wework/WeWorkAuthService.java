@@ -101,7 +101,7 @@ public class WeWorkAuthService {
             newUser.setName(userDetail.has("name") ? userDetail.get("name").asText() : userId);
             newUser.setMobile(userDetail.has("mobile") ? userDetail.get("mobile").asText() : null);
             newUser.setEmail(userDetail.has("email") ? userDetail.get("email").asText() : null);
-            newUser.setAvatar(userDetail.has("avatar") ? userDetail.get("avatar").asText() : null);
+            newUser.setAvatarUrl(userDetail.has("avatar") ? userDetail.get("avatar").asText() : null);
             newUser.setStatus(1); // 默认启用
 
             // 设置角色（默认为员工）
@@ -130,8 +130,8 @@ public class WeWorkAuthService {
      * @return 新的 Access Token
      */
     public String refreshToken(String refreshToken) {
-        // 验证刷新令牌
-        if (!jwtTokenProvider.validateToken(refreshToken)) {
+        // 验证刷新令牌（validateToken 返回 Claims，null 表示无效/已过期）
+        if (jwtTokenProvider.validateToken(refreshToken) == null) {
             throw new BusinessException(401, "刷新令牌无效或已过期");
         }
 

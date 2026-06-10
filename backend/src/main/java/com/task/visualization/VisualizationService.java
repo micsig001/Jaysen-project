@@ -57,7 +57,7 @@ public class VisualizationService {
         // 1. 查中心用户
         User centerUser = userMapper.selectByUserId(centerUserId);
         if (centerUser == null) {
-            throw new com.task.common.BusinessException.notFound("用户不存在: " + centerUserId);
+            throw com.task.common.BusinessException.notFound("用户不存在: " + centerUserId);
         }
 
         // 2. 查与该用户相关的所有任务（作为 creator 或 assignee）
@@ -147,10 +147,10 @@ public class VisualizationService {
      */
     public Map<String, Object> getMultiViewGraph(List<String> userIds) {
         if (userIds == null || userIds.isEmpty()) {
-            throw new com.task.common.BusinessException.badRequest("userIds 不能为空");
+            throw com.task.common.BusinessException.badRequest("userIds 不能为空");
         }
         if (userIds.size() > MAX_NODES) {
-            throw new com.task.common.BusinessException.badRequest("最多选择 " + MAX_NODES + " 人");
+            throw com.task.common.BusinessException.badRequest("最多选择 " + MAX_NODES + " 人");
         }
 
         // 查询这些用户之间所有任务

@@ -78,7 +78,10 @@ public class SensitiveDataAspect {
             Object data = r.getData();
             if (data != null) {
                 Object desensitized = desensitizeObject(data, isAdmin, currentUserId);
-                r.setData(desensitized);
+                // 脱敏不改变类型，用 raw cast 绕过 ? 通配符限制
+                @SuppressWarnings({"unchecked", "rawtypes"})
+                Result raw = r;
+                raw.setData(desensitized);
             }
             return;
         }

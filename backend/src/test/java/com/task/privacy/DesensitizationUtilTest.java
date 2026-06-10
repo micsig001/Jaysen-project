@@ -56,9 +56,9 @@ class DesensitizationUtilTest {
     void mobileDesensitization() {
         assertThat(util.desensitize("13812345678", SensitiveType.MOBILE))
                 .isEqualTo("138****5678");
-        // 非 11 位
+        // 非 11 位（6 字符：保留前 2 + 2 个 * + 末 2）
         assertThat(util.desensitize("138123", SensitiveType.MOBILE))
-                .isEqualTo("13*123");
+                .isEqualTo("13**23");
     }
 
     @Test

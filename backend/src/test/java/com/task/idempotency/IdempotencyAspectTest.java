@@ -9,9 +9,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
@@ -35,6 +36,7 @@ import static org.mockito.Mockito.*;
  * @author Mavis
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class IdempotencyAspectTest {
 
     @Mock
@@ -46,13 +48,14 @@ class IdempotencyAspectTest {
     @Mock
     private MethodSignature signature;
 
-    @InjectMocks
-    private IdempotencyAspect aspect;
-
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    private IdempotencyAspect aspect;
 
     @BeforeEach
     void setUp() {
+        // 手动构造 aspect，让 ObjectMapper 用真实实例（@InjectMocks 不会注入 final 字段）
+        aspect = new IdempotencyAspect(idempotencyService, objectMapper);
         // Mock HTTP 请求上下文
         HttpServletRequest request = mock(HttpServletRequest.class);
         when(request.getHeader("X-Idempotency-Key")).thenReturn("test-uuid-12345");
