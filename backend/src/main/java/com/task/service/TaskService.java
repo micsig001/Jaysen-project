@@ -16,8 +16,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 任务服务（CRUD 层）
@@ -41,6 +44,21 @@ public class TaskService {
     private final TaskMapper taskMapper;
     private final UserMapper userMapper;
     private final TaskNoGenerator taskNoGenerator;
+
+    /**
+     * 部门用户 ID 列表缓存（修复 P1-6：N+1 问题）
+     * key = departmentId
+     * value = (List<String> userIds, expireAt)
+     * TTL 60 秒：部门成员变更不频繁，60s 足够
+     */
+    private static final long DEPT_USERS_CACHE_TTL_MS = 60_000L;
+    private final Map<Long, CachedUserIds> deptUsersCache = new ConcurrentHashMap<>();
+
+    private record CachedUserIds(List<String> userIds, long expireAt) {
+        boolean isExpired() {
+            return System.currentTimeMillis() > expireAt;
+        }
+    }
 
     /**
      * 分页查询任务列表（带数据权限过滤）
@@ -234,8 +252,8 @@ public class TaskService {
                 wrapper.eq(Task::getId, -1L);
                 return;
             }
-            List<String> deptUserIds = userMapper.selectUserIdsByDeptId(
-                    currentUser.getDepartmentId());
+            // 修复 P1-6：使用缓存
+            List<String> deptUserIds = getCachedDeptUserIds(currentUser.getDepartmentId());
             if (deptUserIds.isEmpty()) {
                 wrapper.eq(Task::getId, -1L);
                 return;
@@ -266,9 +284,8 @@ public class TaskService {
             if (currentUser.getDepartmentId() == null) {
                 return false;
             }
-            // 检查 creator 或 assignee 是否在本部门
-            List<String> deptUserIds = userMapper.selectUserIdsByDeptId(
-                    currentUser.getDepartmentId());
+            // 修复 P1-6：缓存部门用户列表，避免 N+1
+            List<String> deptUserIds = getCachedDeptUserIds(currentUser.getDepartmentId());
             if (deptUserIds.isEmpty()) {
                 return false;
             }
@@ -279,5 +296,33 @@ public class TaskService {
         // EMPLOYEE
         return userId.equals(task.getCreatorId())
                 || userId.equals(task.getAssigneeId());
+    }
+
+    /**
+     * 修复 P1-6：带 TTL 缓存的部门用户 ID 查询
+     * 应用层缓存（60s TTL），避免每查一条任务都打一次 DB
+     */
+    private List<String> getCachedDeptUserIds(Long deptId) {
+        CachedUserIds cached = deptUsersCache.get(deptId);
+        if (cached != null && !cached.isExpired()) {
+            return cached.userIds();
+        }
+        // 缓存未命中或过期，查 DB
+        List<String> userIds = userMapper.selectUserIdsByDeptId(deptId);
+        List<String> safeIds = userIds != null ? userIds : Collections.emptyList();
+        deptUsersCache.put(deptId, new CachedUserIds(safeIds,
+                System.currentTimeMillis() + DEPT_USERS_CACHE_TTL_MS));
+        return safeIds;
+    }
+
+    /**
+     * 清理缓存（部门成员变更时调用，外部 trigger）
+     */
+    public void invalidateDeptUsersCache(Long deptId) {
+        if (deptId == null) {
+            deptUsersCache.clear();
+        } else {
+            deptUsersCache.remove(deptId);
+        }
     }
 }

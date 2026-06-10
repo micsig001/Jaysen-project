@@ -8,7 +8,6 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -36,6 +35,13 @@ public class WeWorkApiClient {
 
     @Value("${wework.secret}")
     private String secret;
+
+    /**
+     * 修复（P1-4）：agentid 改用 @Value 注入（之前用 System.getProperty 永远拿不到值，
+     * fallback "0" 会导致企微拒绝所有消息）
+     */
+    @Value("${wework.agent-id:0}")
+    private String agentId;
 
     public WeWorkApiClient(WebClient.Builder webClientBuilder,
                            StringRedisTemplate redisTemplate,
@@ -313,7 +319,8 @@ public class WeWorkApiClient {
         Map<String, Object> message = new HashMap<>();
         message.put("touser", toUser);
         message.put("msgtype", "text");
-        message.put("agentid", Integer.parseInt(System.getProperty("WEWORK_AGENT_ID", "0")));
+        // 修复（P1-4）：agentid 用 @Value 注入的 agentId（之前是 System.getProperty 永远拿不到）
+        message.put("agentid", parseAgentId());
 
         Map<String, String> text = new HashMap<>();
         text.put("content", content);
@@ -330,7 +337,7 @@ public class WeWorkApiClient {
         Map<String, Object> message = new HashMap<>();
         message.put("touser", toUser);
         message.put("msgtype", "textcard");
-        message.put("agentid", Integer.parseInt(System.getProperty("WEWORK_AGENT_ID", "0")));
+        message.put("agentid", parseAgentId());
 
         Map<String, String> card = new HashMap<>();
         card.put("title", title);
@@ -349,7 +356,7 @@ public class WeWorkApiClient {
         Map<String, Object> message = new HashMap<>();
         message.put("touser", toUser);
         message.put("msgtype", "template_card");
-        message.put("agentid", Integer.parseInt(System.getProperty("WEWORK_AGENT_ID", "0")));
+        message.put("agentid", parseAgentId());
 
         Map<String, Object> templateCard = new HashMap<>();
         templateCard.put("card_type", "todo");
@@ -362,5 +369,17 @@ public class WeWorkApiClient {
         message.put("template_card", templateCard);
 
         return message;
+    }
+
+    /**
+     * 安全解析 agent_id：配置错误时 fallback 0
+     */
+    private int parseAgentId() {
+        try {
+            return Integer.parseInt(agentId);
+        } catch (NumberFormatException e) {
+            log.warn("wework.agent-id 解析失败: {}", agentId);
+            return 0;
+        }
     }
 }

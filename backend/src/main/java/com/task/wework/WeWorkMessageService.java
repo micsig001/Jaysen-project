@@ -4,6 +4,7 @@ import com.task.entity.Task;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -34,6 +35,7 @@ public class WeWorkMessageService {
      * @param task 任务对象
      * @param receiverUserId 接收方企微 UserID
      */
+    @Async  // 修复（P1-5）：业务调用方不等企微响应，避免阻塞主流程
     public void notifyTaskAssigned(Task task, String receiverUserId) {
         if (!messageEnabled) {
             log.debug("消息推送已禁用，跳过任务分派通知");
@@ -58,6 +60,7 @@ public class WeWorkMessageService {
      * @param creatorUserId 发起方企微 UserID
      * @param rejectReason 驳回原因
      */
+    @Async
     public void notifyTaskRejected(Task task, String creatorUserId, String rejectReason) {
         if (!messageEnabled) {
             log.debug("消息推送已禁用，跳过驳回通知");
@@ -80,6 +83,7 @@ public class WeWorkMessageService {
      * @param task 任务对象
      * @param creatorUserId 发起方企微 UserID
      */
+    @Async
     public void notifyTaskPendingAcceptance(Task task, String creatorUserId) {
         if (!messageEnabled) {
             log.debug("消息推送已禁用，跳过待验收通知");
@@ -101,6 +105,7 @@ public class WeWorkMessageService {
      * @param task 任务对象
      * @param executorUserId 执行方企微 UserID
      */
+    @Async
     public void notifyTimeoutWarning(Task task, String executorUserId) {
         if (!messageEnabled) {
             log.debug("消息推送已禁用，跳过超时预警");
