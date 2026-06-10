@@ -161,10 +161,6 @@ const isInitiator = computed(() => {
   return selectedTask.value?.creatorId === userStore.userInfo?.userId
 })
 
-const isAssignee = computed(() => {
-  return selectedTask.value?.assigneeId === userStore.userInfo?.userId
-})
-
 const filters = reactive({
   status: '',
   priority: undefined as number | undefined
@@ -342,13 +338,13 @@ const handleReject = async (task: any) => {
   }
 }
 
-// 移动端点击任务显示操作菜单
-const handleTaskClick = (task: any) => {
-  if (isMobile.value) {
-    selectedTask.value = task
-    showActionSheet.value = true
-  }
-}
+// 移动端点击任务显示操作菜单（暂未使用，预留）
+// const handleTaskClick = (task: any) => {
+//   if (isMobile.value) {
+//     selectedTask.value = task
+//     showActionSheet.value = true
+//   }
+// }
 </script>
 
 <style scoped>

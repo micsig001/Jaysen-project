@@ -54,7 +54,7 @@ const router = createRouter({
 })
 
 // Route guard - 完善的路由守卫
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const token = getToken()
   const userStore = useUserStore()
 

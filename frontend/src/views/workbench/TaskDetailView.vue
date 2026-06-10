@@ -58,13 +58,12 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import axios from 'axios'
 import dayjs from 'dayjs'
 
 const route = useRoute()
-const router = useRouter()
 
 const loading = ref(false)
 const task = ref<any>(null)

@@ -286,7 +286,7 @@ const loadUsers = async () => {
       pageSize: pagination.pageSize,
       keyword: filters.keyword || undefined,
       role: filters.role || undefined,
-      status: filters.status
+      status: filters.status as 0 | 1 | undefined
     })
     userList.value = res.records || []
     total.value = res.total || 0

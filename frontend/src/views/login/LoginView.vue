@@ -72,7 +72,7 @@ const handleLogin = async () => {
   try {
     const response = await loginByCode(loginForm.code)
     
-    const { access_token, token_type } = response.data
+    const { access_token } = response.data
     // 使用加密方式存储Token
     setToken(access_token)
 

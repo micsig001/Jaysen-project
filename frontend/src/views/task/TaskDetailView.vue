@@ -250,7 +250,7 @@ const handleCancel = async () => {
       inputErrorMessage: '取消原因不能为空'
     })
 
-    await cancelTask(task.value.id, { reason })
+    await cancelTask(task.value.id, reason)
     ElMessage.success('任务已取消')
     router.push('/tasks')
   } catch (error: any) {
