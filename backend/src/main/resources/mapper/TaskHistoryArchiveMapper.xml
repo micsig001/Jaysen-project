@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.task.mapper.TaskHistoryArchiveMapper">
+
+    <!-- 统计待归档任务数 -->
+    <select id="countPendingArchive" resultType="long">
+        SELECT COUNT(*)
+        FROM tasks
+        WHERE created_at &lt; #{thresholdCreatedAt}
+          AND status IN ('COMPLETED', 'WITHDRAWN')
+    </select>
+
+    <!-- 单批归档：从主表插入归档表 -->
+    <insert id="insertBatchFromTasks">
+        INSERT INTO tasks_history_archive (
+            task_no, title, description, priority,
+            creator_id, assignee_id, estimated_duration,
+            actual_start_time, actual_deadline, status,
+            source_remark, is_self_assigned,
+            completed_at, withdrawn_at,
+            archived_at, original_created_at, original_updated_at
+        )
+        SELECT
+            task_no, title, description, priority,
+            creator_id, assignee_id, estimated_duration,
+            actual_start_time, actual_deadline, status,
+            source_remark, is_self_assigned,
+            completed_at, withdrawn_at,
+            NOW() AS archived_at,
+            created_at AS original_created_at,
+            updated_at AS original_updated_at
+        FROM tasks
+        WHERE created_at &lt; #{thresholdCreatedAt}
+          AND status IN ('COMPLETED', 'WITHDRAWN')
+        ORDER BY created_at ASC
+        LIMIT #{batchSize}
+    </insert>
+
+    <!-- 按 taskNo 物理删除主表数据 -->
+    <!-- 注意：必须用物理删除，不能走 MyBatis-Plus 的逻辑删除（避免漏删） -->
+    <!-- 关键：使用 taskNo 而不是 id —— InnoDB 独立表空间下归档表和主表的自增 ID 是不共享的，
+         否则会用归档表的 id 去删主表中"id 数值碰巧相等"的其他任务，造成误删 -->
+    <delete id="deleteTasksByTaskNos">
+        DELETE FROM tasks
+        WHERE task_no IN
+        <foreach collection="taskNos" item="taskNo" open="(" separator="," close=")">
+            #{taskNo}
+        </foreach>
+    </delete>
+
+    <!-- 列出本批刚插入的归档 taskNo（按时间区间筛选） -->
+    <select id="selectTaskNosByArchivedAt" resultType="string">
+        SELECT task_no
+        FROM tasks_history_archive
+        WHERE archived_at &gt;= #{batchStartTime}
+        ORDER BY archived_at ASC, id ASC
+    </select>
+
+</mapper>
