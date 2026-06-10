@@ -19,6 +19,8 @@ resources:
   - namespace.yaml
   - configmap.yaml
   - secret.yaml
+  - redis-config.yaml
+  - redis-pvc.yaml
   - mysql-statefulset.yaml
   - redis-deployment.yaml
   - backend-deployment.yaml

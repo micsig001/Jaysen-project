@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+  namespace: task-system
+  labels:
+    app: redis
+data:
+  # Redis 主配置
+  # 关键：
+  #   - requirepass-file  从文件读密码（7.0+ 语法），避免密码进命令行
+  #   - appendonly yes    启用 AOF 持久化（避免重启丢数据）
+  redis.conf: |
+    bind 0.0.0.0
+    protected-mode no
+    port 6379
+    tcp-backlog 511
+    timeout 0
+    tcp-keepalive 300
+    daemonize no
+    supervised no
+    pidfile /tmp/redis.pid
+    loglevel notice
+    logfile ""
+    databases 16
+    always-show-logo no
+    set-proc-title yes
+    proc-title-template "{title} {listen-addr} {server-mode}"
+    save ""
+    appendonly yes
+    appendfilename "appendonly.aof"
+    appenddirname "appendonlydir"
+    appendfsync everysec
+    no-appendfsync-on-rewrite no
+    auto-aof-rewrite-percentage 100
+    auto-aof-rewrite-min-size 64mb
+    aof-load-truncated yes
+    aof-use-rdb-preamble yes
+    slowlog-log-slower-than 10000
+    slowlog-max-len 128
+    latency-tracking yes
+    latency-tracking-info-percentiles 50 99 99.9
+    io-threads 1
+    io-threads-do-reads no
+    maxmemory-policy noeviction
+    # 密码从 /etc/redis-secret/redis-passwd 文件读（挂载自 Secret 的 REDIS_PASSWORD）
+    # 注意：文件名是 redis.conf 里的 requirepass-file 参数
+    # 但 K8s 挂载的是目录 /etc/redis-secret/，文件名为 redis-passwd
+    # 所以 requirepass-file 路径是 /etc/redis-secret/redis-passwd
+    requirepass-file /etc/redis-secret/redis-passwd

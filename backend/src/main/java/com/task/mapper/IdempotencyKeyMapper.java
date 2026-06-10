@@ -2,6 +2,7 @@ package com.task.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.task.entity.IdempotencyKey;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -36,8 +37,14 @@ public interface IdempotencyKeyMapper extends BaseMapper<IdempotencyKey> {
                            @Param("expiresAt") LocalDateTime expiresAt);
 
     /**
-     * 删除过期记录（建议定时任务调用）
+     * 删除过期记录（由 {@code IdempotencyCleanupScheduler} 每天凌晨调用）
      */
-    @Update("DELETE FROM idempotency_keys WHERE expires_at < #{now}")
+    @Delete("DELETE FROM idempotency_keys WHERE expires_at < #{now}")
     int deleteExpired(@Param("now") LocalDateTime now);
+
+    /**
+     * 修复（P1-13）：按 Key 删除单条记录（释放 Key 时调用）
+     */
+    @Delete("DELETE FROM idempotency_keys WHERE idempotency_key = #{key}")
+    int deleteByKey(@Param("key") String key);
 }

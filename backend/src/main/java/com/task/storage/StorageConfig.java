@@ -42,20 +42,20 @@ public class StorageConfig {
     @Bean(name = "localStorageService")
     @Primary
     @ConditionalOnProperty(prefix = "storage", name = "type", havingValue = "local", matchIfMissing = true)
-    public StorageService localStorageService(StorageProperties storageProperties) {
+    public StorageService localStorageService(StorageProperties storageProperties,
+                                              SignedUrlUtil signedUrlUtil) {
         log.info("[存储配置] 激活 Local 存储实现, path={}",
                 storageProperties.getLocal().getPath());
-        // LocalStorageService 自己用 @PostConstruct 初始化目录
-        return new LocalStorageService(storageProperties);
+        return new LocalStorageService(storageProperties, signedUrlUtil);
     }
 
     /**
      * MinIO 存储实现 Bean
      *
      * <p>条件：{@code storage.type=minio}
+     * <p>不标 {@code @Primary}：只让 localStorageService 是 primary
      */
     @Bean(name = "minioStorageService")
-    @Primary
     @ConditionalOnProperty(prefix = "storage", name = "type", havingValue = "minio")
     public StorageService minioStorageService(StorageProperties storageProperties) {
         log.info("[存储配置] 激活 MinIO 存储实现, endpoint={}, bucket={}",
@@ -68,9 +68,9 @@ public class StorageConfig {
      * 阿里云 OSS 存储实现 Bean
      *
      * <p>条件：{@code storage.type=aliyun-oss}
+     * <p>不标 {@code @Primary}：只让 localStorageService 是 primary
      */
     @Bean(name = "aliyunOssStorageService")
-    @Primary
     @ConditionalOnProperty(prefix = "storage", name = "type", havingValue = "aliyun-oss")
     public StorageService aliyunOssStorageService(StorageProperties storageProperties) {
         log.info("[存储配置] 激活 Aliyun OSS 存储实现, endpoint={}, bucket={}",

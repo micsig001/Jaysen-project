@@ -40,6 +40,11 @@ public class MinioStorageService implements StorageService {
 
     private final StorageProperties storageProperties;
 
+    @Override
+    public String getBeanName() {
+        return "minioStorageService";
+    }
+
     private void notImplemented(String op) {
         log.warn("[存储-MinIO] 操作未实现: op={}, bucket={}", op,
                 storageProperties.getMinio().getBucket());

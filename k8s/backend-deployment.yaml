@@ -119,8 +119,9 @@ spec:
                 secretKeyRef:
                   name: task-secret
                   key: WEWORK_SECRET
-            # JVM 调优
-            - name: JAVA_OPTS
+            # 修复（P1-6）：用 JAVA_TOOL_OPTIONS 代替 JAVA_OPTS
+            # JAVA_OPTS 不会被 Spring Boot 镜像自动应用；JAVA_TOOL_OPTIONS 才是 JVM 标准
+            - name: JAVA_TOOL_OPTIONS
               value: "-Xms512m -Xmx2g -XX:+UseG1GC -XX:+HeapDumpOnOutOfMemoryError"
           # 用 envFrom 注入 ConfigMap 其余字段（DB_HOST/PORT/NAME、
           # REDIS_HOST/PORT、WEWORK_CORP_ID、WEWORK_AGENT_ID、SPRING_PROFILES_ACTIVE）

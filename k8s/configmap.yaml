@@ -48,5 +48,8 @@ data:
   # ⚠️ 必须与 Ingress 域名一致，且能被企微后台访问
   APP_FRONTEND_BASE_URL: "https://<YOUR_DOMAIN>"
 
-  # ---- JVM 调优（可选）----
-  # JAVA_OPTS: "-Xms512m -Xmx2g -XX:+UseG1GC"
+  # ---- 文件下载 HMAC 签名密钥（修复 P0-2，≥32 字符）----
+  FILE_DOWNLOAD_SECRET: "<YOUR_FILE_DOWNLOAD_SECRET>"
+
+  # ---- JVM 调优（修复 P1-6：用 JAVA_TOOL_OPTIONS 让 JVM 自动读）----
+  # JAVA_TOOL_OPTIONS: "-Xms512m -Xmx2g -XX:+UseG1GC"

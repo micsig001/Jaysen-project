@@ -23,6 +23,14 @@ import java.io.InputStream;
 public interface StorageService {
 
     /**
+     * 暴露对应的 Spring Bean 名称
+     * <p>实现类必须返回在 {@link StorageConfig} 中注册的 bean 名称
+     * （{@code "localStorageService"} / {@code "minioStorageService"} / {@code "aliyunOssStorageService"}），
+     * 供 {@link StorageServiceFactory} 按名查找。
+     */
+    String getBeanName();
+
+    /**
      * 上传文件
      *
      * @param key          存储 key（相对路径），如 {@code "tasks/123/attachments/uuid.pdf"}

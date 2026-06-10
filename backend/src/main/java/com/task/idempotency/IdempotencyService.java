@@ -122,6 +122,7 @@ public class IdempotencyService {
 
     /**
      * 释放 Key（异常时调用，允许客户端重试）
+     * <p>同时清理 Redis 缓存和数据库记录（让客户端可以立即重试）
      */
     public void release(String idempotencyKey) {
         String redisKey = REDIS_KEY_PREFIX + idempotencyKey;
@@ -130,7 +131,12 @@ public class IdempotencyService {
         } catch (Exception e) {
             log.warn("[幂等] 释放 Redis Key 失败，依赖 TTL 自动过期: {}", e.getMessage());
         }
-        // 数据库记录不删，让 expires_at 自然过期
+        // 修复（P1-13）：同步删除数据库记录（之前依赖 IdempotencyCleanupScheduler 自然过期）
+        try {
+            idempotencyKeyMapper.deleteByKey(idempotencyKey);
+        } catch (Exception e) {
+            log.warn("[幂等] 释放数据库 Key 失败: {}", e.getMessage());
+        }
     }
 
     /**

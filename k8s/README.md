@@ -47,6 +47,7 @@ k8s/
 |------|------|------|
 | `<YOUR_DOMAIN>` | `ingress.yaml` | 真实域名（如 `task.example.com`），DNS 需解析到 ingress LB |
 | `<YOUR_CORP_ID>` / `<YOUR_AGENT_ID>` | `configmap.yaml` | 企业微信 CorpID 与 AgentID |
+| `<YOUR_FILE_DOWNLOAD_SECRET>` | `configmap.yaml` | 文件下载 HMAC 签名密钥（≥32 字符） |
 | `<YOUR_REGISTRY>` | `backend-deployment.yaml` / `frontend-deployment.yaml` / `kustomization.yaml` | 镜像仓库地址（如 `registry.example.com/task`） |
 
 Secret 中的 4 个密码占位符也需要替换真实值（见下一节）。
@@ -74,7 +75,8 @@ kubectl -n task-system create secret generic task-secret \
   --from-literal=DB_PASSWORD='YourStrongDBPassword' \
   --from-literal=REDIS_PASSWORD='YourStrongRedisPassword' \
   --from-literal=JWT_SECRET="$(openssl rand -base64 48)" \
-  --from-literal=WEWORK_SECRET='YourWeWorkAppSecret'
+  --from-literal=WEWORK_SECRET='YourWeWorkAppSecret' \
+  --from-literal=FILE_DOWNLOAD_SECRET="$(openssl rand -base64 32)"
 
 # 跳过 secret.yaml 的 apply
 ```

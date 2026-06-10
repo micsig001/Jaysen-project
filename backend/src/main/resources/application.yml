@@ -67,6 +67,9 @@ wework:
 # Frontend Configuration
 app:
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
+  # 修复（P0-2）：文件下载 HMAC 签名密钥（≥32 字符）
+  # 生产环境必须设置独立 secret；为空时 fallback 到 JWT_SECRET
+  file-download-secret: ${FILE_DOWNLOAD_SECRET:}
 
 # Sensitive Data Desensitization
 sensitive-data:
@@ -97,6 +100,10 @@ storage:
     access-key-id: ${OSS_ACCESS_KEY_ID:}
     access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
     bucket: ${OSS_BUCKET:}
+
+# Idempotency Configuration
+idempotency:
+  cleanup-cron: ${IDEMPOTENCY_CLEANUP_CRON:0 30 3 * * ?}  # 每天凌晨 3:30 清理过期记录
 
 # Logging
 logging:

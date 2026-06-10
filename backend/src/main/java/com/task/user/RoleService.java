@@ -13,8 +13,10 @@ import org.springframework.util.StringUtils;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * 角色管理 Service
@@ -117,13 +119,14 @@ public class RoleService {
      * <p>返回三种角色的数量（即使为 0 也返回），便于前端展示完整分布</p>
      */
     public List<RoleStatsVO> getRoleStats() {
-        List<RoleStatsVO> result = Arrays.asList(
-                new RoleStatsVO("EMPLOYEE", countByRole("EMPLOYEE")),
-                new RoleStatsVO("MANAGER", countByRole("MANAGER")),
-                new RoleStatsVO("ADMIN", countByRole("ADMIN"))
+        // 修复（P1-12）：用单次 GROUP BY 查询代替 3 次 count
+        Map<String, Long> dbCount = userMapper.countByRoleGroup().stream()
+                .collect(Collectors.toMap(RoleStatsVO::getRole, RoleStatsVO::getCount));
+        return Arrays.asList(
+                new RoleStatsVO("EMPLOYEE", dbCount.getOrDefault("EMPLOYEE", 0L)),
+                new RoleStatsVO("MANAGER", dbCount.getOrDefault("MANAGER", 0L)),
+                new RoleStatsVO("ADMIN", dbCount.getOrDefault("ADMIN", 0L))
         );
-        log.debug("[角色] 统计完成: {}", result);
-        return result;
     }
 
     /**

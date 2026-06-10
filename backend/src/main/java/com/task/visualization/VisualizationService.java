@@ -4,6 +4,7 @@ import com.task.entity.Task;
 import com.task.entity.User;
 import com.task.mapper.TaskMapper;
 import com.task.mapper.UserMapper;
+import com.task.user.dto.UserNameVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -86,18 +87,16 @@ public class VisualizationService {
                 .limit(MAX_NODES - 1) // 减去中心用户
                 .collect(Collectors.toList());
 
-        // 5. 批量查这些用户的姓名
+        // 5. 批量查这些用户的姓名（修复 P1-11：用 selectNamesByUserIds 避免 N+1）
         List<String> userIds = new ArrayList<>();
         userIds.add(centerUserId);
         for (Map.Entry<String, Long> entry : topRelated) {
             userIds.add(entry.getKey());
         }
         Map<String, String> userNameMap = new HashMap<>();
-        for (String uid : userIds) {
-            User u = userMapper.selectByUserId(uid);
-            if (u != null) {
-                userNameMap.put(uid, u.getName());
-            }
+        List<UserNameVO> nameVOs = userMapper.selectNamesByUserIds(userIds);
+        for (UserNameVO vo : nameVOs) {
+            userNameMap.put(vo.getUserId(), vo.getName());
         }
 
         // 6. 构造 ECharts 节点
@@ -170,11 +169,11 @@ public class VisualizationService {
             }
         }
 
-        // 构造节点
+        // 构造节点（修复 P1-11：用批量查询避免 N+1）
         Map<String, String> userNameMap = new HashMap<>();
-        for (String uid : userIds) {
-            User u = userMapper.selectByUserId(uid);
-            if (u != null) userNameMap.put(uid, u.getName());
+        List<UserNameVO> nameVOs = userMapper.selectNamesByUserIds(userIds);
+        for (UserNameVO vo : nameVOs) {
+            userNameMap.put(vo.getUserId(), vo.getName());
         }
         List<Map<String, Object>> nodes = new ArrayList<>();
         for (String uid : userIds) {

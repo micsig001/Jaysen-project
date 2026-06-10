@@ -39,6 +39,11 @@ public class AliyunOssStorageService implements StorageService {
 
     private final StorageProperties storageProperties;
 
+    @Override
+    public String getBeanName() {
+        return "aliyunOssStorageService";
+    }
+
     private void notImplemented(String op) {
         log.warn("[存储-OSS] 操作未实现: op={}, bucket={}", op,
                 storageProperties.getOss().getBucket());

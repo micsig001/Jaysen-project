@@ -33,9 +33,6 @@ public class IdempotencyKey {
     /** 操作类型（CREATE_TASK / UPDATE_USER_ROLE 等） */
     private String operationType;
 
-    /** 请求参数哈希（用于检测"同 Key 但不同请求"的恶意场景） */
-    private String requestHash;
-
     /** 响应数据（JSON 序列化） */
     private String responseData;
 

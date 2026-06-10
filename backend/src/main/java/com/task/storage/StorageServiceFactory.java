@@ -66,11 +66,12 @@ public class StorageServiceFactory {
 
     /**
      * 列出当前所有已注册的存储实现（供运维/调试使用）
+     * <p>key 为实现类的 {@link StorageService#getBeanName()}，与 {@link #get(String)} 一致
      */
     public Map<String, StorageService> listAll() {
         Map<String, StorageService> map = new HashMap<>();
         for (StorageService svc : allStorageServices) {
-            map.put(svc.getClass().getSimpleName(), svc);
+            map.put(svc.getBeanName(), svc);
         }
         return map;
     }
@@ -79,12 +80,6 @@ public class StorageServiceFactory {
      * 判断一个实现是否对应给定的 bean 名称
      */
     private boolean matchesBeanName(StorageService svc, String name) {
-        // 简单映射：按实现类名推断（也可在实现类加 @Component("xxx") 显式暴露名称）
-        return switch (name) {
-            case "localStorageService" -> svc instanceof LocalStorageService;
-            case "minioStorageService" -> svc instanceof MinioStorageService;
-            case "aliyunOssStorageService" -> svc instanceof AliyunOssStorageService;
-            default -> false;
-        };
+        return name != null && name.equals(svc.getBeanName());
     }
 }

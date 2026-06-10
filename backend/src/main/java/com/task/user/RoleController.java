@@ -3,8 +3,6 @@ package com.task.user;
 import com.task.audit.AuditLog;
 import com.task.common.BusinessException;
 import com.task.common.Result;
-import com.task.entity.User;
-import com.task.mapper.UserMapper;
 import com.task.user.dto.RoleChangeRequest;
 import com.task.user.dto.RoleStatsVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -43,7 +41,6 @@ import java.util.List;
 public class RoleController {
 
     private final RoleService roleService;
-    private final UserMapper userMapper;
 
     /**
      * 查询用户角色
@@ -95,15 +92,5 @@ public class RoleController {
             throw BusinessException.unauthorized("未登录");
         }
         return principal.toString();
-    }
-
-    @SuppressWarnings("unused")
-    private User currentUser() {
-        String userId = currentUserId();
-        User user = userMapper.selectByUserId(userId);
-        if (user == null) {
-            throw BusinessException.unauthorized("用户不存在: " + userId);
-        }
-        return user;
     }
 }

@@ -1,12 +1,13 @@
 # ============================================================
-# Redis 7 Deployment + ClusterIP Service
+# Redis 7 Deployment + ClusterIP Service + PVC
 # ------------------------------------------------------------
-# 特点：
-#   - 1 副本（用作缓存 + 幂等性去重，单点够用；如需 HA
-#     请改用 Redis Sentinel / Cluster，本清单用于自建）
-#   - 密码从 Secret 注入（启用 requirepass）
-#   - 健康检查用 redis-cli ping
-#   - 资源限制：memory 512Mi, cpu 500m
+# 修复（P0-3 / P0-4 / P1-8）：
+#   - 启用 PVC 持久化（Pod 重启数据不丢）
+#   - 用 Secret 挂密码文件 + redis.conf 引用 requirepass-file，
+#     避免密码进命令行（ps 不可见）
+#   - readinessProbe 用 REDISCLI_AUTH 环境变量代替 -a
+#
+# ⚠️ 部署前请确认 redis-data-pvc 资源充足（建议 ≥5Gi）
 # ============================================================
 ---
 apiVersion: v1
@@ -51,22 +52,23 @@ spec:
         - name: redis
           image: redis:7-alpine
           imagePullPolicy: IfNotPresent
-          # 启动时如果 requirepass 失败会重启，password 从 secret 注入
+          # 修复（P0-4）：用 redis.conf 引用 requirepass-file，
+          # 密码从 secret 挂载的文件读，**不进 ps**
           command:
-            - /bin/sh
-            - -c
-            - |
-              if [ -n "$REDIS_PASSWORD" ]; then
-                exec redis-server --requirepass "$REDIS_PASSWORD" --appendonly yes
-              else
-                exec redis-server --appendonly yes
-              fi
+            - redis-server
+            - /etc/redis-config/redis.conf
           ports:
             - name: redis
               containerPort: 6379
               protocol: TCP
+          # 修复（P1-8）：用 REDISCLI_AUTH 环境变量传递密码（避免 -a 暴露）
           env:
             - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: task-secret
+                  key: REDIS_PASSWORD
+            - name: REDISCLI_AUTH
               valueFrom:
                 secretKeyRef:
                   name: task-secret
@@ -78,7 +80,7 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
-          # 存活探针：ping
+          # 存活探针：ping（不传密码，依赖 requirepass-file）
           livenessProbe:
             exec:
               command: ["redis-cli", "ping"]
@@ -86,26 +88,37 @@ spec:
             periodSeconds: 15
             timeoutSeconds: 5
             failureThreshold: 3
-          # 就绪探针：认证后 ping
+          # 就绪探针：认证后 ping（用 REDISCLI_AUTH 不暴露密码）
           readinessProbe:
             exec:
-              command:
-                - sh
-                - -c
-                - |
-                  if [ -n "$REDIS_PASSWORD" ]; then
-                    redis-cli -a "$REDIS_PASSWORD" ping | grep -q PONG
-                  else
-                    redis-cli ping | grep -q PONG
-                  fi
+              command: ["redis-cli", "ping"]
             initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 3
             failureThreshold: 3
           volumeMounts:
+            # 修复（P0-3）：挂载 PVC 持久化
             - name: redis-data
               mountPath: /data
+            # 挂载 redis.conf（来自 ConfigMap）
+            - name: redis-config
+              mountPath: /etc/redis-config
+              readOnly: true
+            # 挂载密码文件（来自 Secret）
+            - name: redis-passwd
+              mountPath: /etc/redis-secret
+              readOnly: true
       volumes:
         - name: redis-data
-          # 单节点 Pod，重建后数据丢失；如果要持久化请用 PVC
-          emptyDir: {}
+          # 修复（P0-3）：从 emptyDir 改为 PVC，Pod 重启数据不丢
+          persistentVolumeClaim:
+            claimName: redis-data-pvc
+        - name: redis-config
+          configMap:
+            name: redis-config
+        - name: redis-passwd
+          secret:
+            secretName: task-secret
+            items:
+              - key: REDIS_PASSWORD
+                path: redis-passwd

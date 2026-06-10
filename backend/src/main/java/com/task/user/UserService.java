@@ -217,18 +217,16 @@ public class UserService {
     }
 
     /**
-     * 批量部门名查询（用于列表关联展示，避免 N+1）
+     * 批量部门名查询（修复 P1-4：用 selectBatchIds 真正避免 N+1）
      */
     private Map<Long, String> batchLookupDeptNames(Set<Long> deptIds) {
         if (deptIds.isEmpty()) {
             return Collections.emptyMap();
         }
-        Map<Long, String> map = new HashMap<>(deptIds.size() * 2);
-        for (Long deptId : deptIds) {
-            Department dept = departmentMapper.selectById(deptId);
-            if (dept != null) {
-                map.put(deptId, dept.getName());
-            }
+        List<Department> depts = departmentMapper.selectBatchIds(deptIds);
+        Map<Long, String> map = new HashMap<>(depts.size() * 2);
+        for (Department d : depts) {
+            map.put(d.getId(), d.getName());
         }
         return map;
     }

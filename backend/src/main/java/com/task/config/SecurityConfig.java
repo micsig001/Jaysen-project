@@ -43,6 +43,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/**").permitAll()
                 // 企微 OAuth 回调（GET）
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/auth/wework/callback").permitAll()
+                // 文件下载端点（修复 P0-2：通过 HMAC 签名校验，permitAll 但签名不对会被 FileController 拦截）
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/files/**").permitAll()
                 // Swagger文档(开发环境)
                 .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 // 健康检查端点
