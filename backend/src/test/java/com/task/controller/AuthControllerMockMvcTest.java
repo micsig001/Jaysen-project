@@ -18,7 +18,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -36,6 +35,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>POST /api/auth/refresh — 刷新 Token</li>
  *   <li>POST /api/auth/logout — 退出登录（加黑名单）</li>
  * </ul>
+ *
+ * <p>完整 OAuth 流程回调的端到端测试（real {@code WeWorkAuthService} + {@code FakeWeWorkApiClient}
+ * + mocked {@code UserMapper}）在 {@code WeWorkAuthServiceOAuthFlowTest}，避免本文件同时 mock 和 real 混用。
  *
  * @author Mavis
  */
@@ -134,6 +136,32 @@ class AuthControllerMockMvcTest {
                         .param("state", "xyz123"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrlPattern("**/login/callback?token=*&state=xyz123"));
+    }
+
+    // ---- 完整 OAuth 流程回调（Mock 形态，对应真实流程在 WeWorkAuthServiceOAuthFlowTest） ----
+
+    @Test
+    @DisplayName("GET /wework/callback：无 state → 302 到 /login/callback?token=...（不带 state）")
+    void weworkCallback_noState_tokenOnlyRedirect() throws Exception {
+        when(weWorkAuthService.loginByCode("callback_code")).thenReturn("mocked.jwt.token");
+
+        mockMvc.perform(get("/api/auth/wework/callback")
+                        .param("code", "callback_code"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrlPattern("**/login/callback?token=*"));
+    }
+
+    @Test
+    @DisplayName("GET /wework/callback：含特殊字符的 token → URL-encoded 后拼到 redirect URL")
+    void weworkCallback_tokenWithSpecialChars_isUrlEncoded() throws Exception {
+        // JWT 通常是 base64，含 + / = 等字符，需要 URL encode 防止后端解析错乱
+        when(weWorkAuthService.loginByCode("callback_code"))
+                .thenReturn("abc.def+ghi==");
+
+        mockMvc.perform(get("/api/auth/wework/callback")
+                        .param("code", "callback_code"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrlPattern("**/login/callback?token=abc.def%2Bghi%3D%3D"));
     }
 
     @Test

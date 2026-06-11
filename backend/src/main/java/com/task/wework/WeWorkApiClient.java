@@ -6,7 +6,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
-import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.Duration;
@@ -17,9 +16,14 @@ import java.util.concurrent.TimeUnit;
 /**
  * 企业微信 API 客户端
  * 封装企微接口调用，包括 AccessToken 管理、用户信息获取、消息推送等
+ *
+ * <p>本身不是 {@code @Component}，由 {@link com.task.wework.WeWorkApiConfig} 根据 Spring
+ * profile 选择注册真实实现（profile=prod 或默认）或
+ * {@link com.task.wework.FakeWeWorkApiClient}（profile=dev/test）。
+ *
+ * <p>业务侧继续通过类型注入 {@code WeWorkApiClient}，无感切换。
  */
 @Slf4j
-@Component
 public class WeWorkApiClient {
 
     private static final String BASE_URL = "https://qyapi.weixin.qq.com";
@@ -46,7 +50,8 @@ public class WeWorkApiClient {
     public WeWorkApiClient(WebClient.Builder webClientBuilder,
                            StringRedisTemplate redisTemplate,
                            ObjectMapper objectMapper) {
-        this.webClient = webClientBuilder.baseUrl(BASE_URL).build();
+        // 允许 null 依赖：Fake 客户端走 super(null, null, null) 不需要 webClient/redis
+        this.webClient = (webClientBuilder != null) ? webClientBuilder.baseUrl(BASE_URL).build() : null;
         this.redisTemplate = redisTemplate;
         this.objectMapper = objectMapper;
     }

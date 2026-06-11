@@ -15,12 +15,20 @@ import java.time.LocalDateTime;
 /**
  * 企业微信认证服务
  * 处理 OAuth2.0 授权流程、用户信息同步和 JWT Token 签发
+ *
+ * <p>{@link WeWorkApiClient} 注入的是 Spring 容器中的 Bean，由 {@link WeWorkApiConfig}
+ * 根据 profile 决定是 {@link FakeWeWorkApiClient}（dev/test）还是真实实现（prod）。
+ * 业务侧无需感知。
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class WeWorkAuthService {
 
+    /**
+     * 注入的 WeWorkApiClient：可能是真实实现（prod），也可能是 Fake（dev/test）
+     * <p>类型注入 + @Primary 自动选择，业务侧无感
+     */
     private final WeWorkApiClient weWorkApiClient;
     private final JwtTokenProvider jwtTokenProvider;
     private final UserMapper userMapper;
@@ -40,7 +48,8 @@ public class WeWorkAuthService {
         }
 
         String userId = userInfo.get("UserId").asText();
-        log.info("企微授权登录，UserID: {}", userId);
+        log.info("企微授权登录，UserID: {}, client={}", userId,
+                weWorkApiClient.getClass().getSimpleName());
 
         // 2. 获取用户详细信息
         JsonNode userDetail = weWorkApiClient.getUserDetail(userId);
