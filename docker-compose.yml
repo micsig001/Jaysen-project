@@ -10,8 +10,11 @@ services:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root}
       MYSQL_DATABASE: ${DB_NAME:-task_system}
       TZ: Asia/Shanghai
-    ports:
-      - "${DB_PORT:-3306}:3306"
+    # P2.5: 生产不暴露 3306 到 host，仅本机调试时可取消注释
+    #   本机调试：取消下一行注释，并通过 docker network 直连
+    #   生产环境：保持注释，靠 backend 服务通过 docker network 访问
+    # ports:
+    #   - "127.0.0.1:${DB_PORT:-3306}:3306"
     volumes:
       - mysql-data:/var/lib/mysql
       - ./mysql/init:/docker-entrypoint-initdb.d
@@ -34,8 +37,11 @@ services:
     restart: unless-stopped
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-changeme}
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
+    # P2.5: 生产不暴露 6379 到 host，仅本机调试时可取消注释
+    #   本机调试：取消下一行注释，并通过 docker network 直连
+    #   生产环境：保持注释，靠 backend 服务通过 docker network 访问
+    # ports:
+    #   - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     volumes:
       - redis-data:/data
     command: >
