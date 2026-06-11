@@ -1,19 +1,20 @@
 package com.task.auth;
 
+import jakarta.annotation.PreDestroy;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -22,10 +23,19 @@ import java.util.concurrent.TimeUnit;
 /**
  * JWT 认证过滤器
  * 从请求头提取并验证JWT Token,将用户信息存入SecurityContext
+ *
+ * <p>设计说明（P2-1）：
+ * <ul>
+ *   <li>认证失败时不再直接写 JSON 响应（绕过 {@code AuthenticationEntryPoint}），
+ *       改为委托给 {@code HandlerExceptionResolver}，由全局异常处理
+ *       ({@code @RestControllerAdvice} + {@code AuthenticationException})
+ *       输出标准 {@code Result} JSON 响应体。</li>
+ *   <li>容器关闭钩子改用 {@code @PreDestroy}，符合 Spring 生命周期管理规范，
+ *       避免覆盖 {@code Filter.destroy()} 与 Spring bean 销毁阶段的耦合问题。</li>
+ * </ul>
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String TOKEN_HEADER = "Authorization";
@@ -34,6 +44,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final StringRedisTemplate redisTemplate;
+    /**
+     * 注入 Spring MVC 的 HandlerExceptionResolver（典型实现是
+     * {@code ExceptionHandlerExceptionResolver}），用于在 Filter 链中将
+     * 业务异常/认证异常委托给 {@code @RestControllerAdvice} 统一处理。
+     * <p>显式 @Qualifier 避免与 {@code errorAttributes} bean 冲突
+     * （{@code errorAttributes} 实现了多个接口，其中之一是
+     * {@code HandlerExceptionResolver}）。
+     */
+    private final HandlerExceptionResolver resolver;
+
+    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider,
+                                   StringRedisTemplate redisTemplate,
+                                   @Qualifier("handlerExceptionResolver")
+                                   HandlerExceptionResolver resolver) {
+        this.jwtTokenProvider = jwtTokenProvider;
+        this.redisTemplate = redisTemplate;
+        this.resolver = resolver;
+    }
 
     @Override
     protected void doFilterInternal(
@@ -48,7 +76,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 // 检查Token是否在黑名单中
                 if (isTokenBlacklisted(token)) {
                     log.warn("Token已在黑名单中: {}", token.substring(0, Math.min(20, token.length())));
-                    sendUnauthorized(response, "Token已失效");
+                    resolver.resolveException(request, response, null,
+                            new org.springframework.security.authentication.BadCredentialsException("Token已失效"));
                     return;
                 }
 
@@ -74,10 +103,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         } catch (IllegalArgumentException e) {
             log.warn("JWT验证失败: {}", e.getMessage());
-            sendUnauthorized(response, "无效的Token");
+            resolver.resolveException(request, response, null,
+                    new org.springframework.security.authentication.BadCredentialsException("无效的Token", e));
+        } catch (org.springframework.security.core.AuthenticationException e) {
+            log.warn("JWT认证失败: {}", e.getMessage());
+            resolver.resolveException(request, response, null, e);
         } catch (Exception e) {
             log.error("JWT认证处理异常", e);
-            sendUnauthorized(response, "认证失败");
+            resolver.resolveException(request, response, null,
+                    new org.springframework.security.authentication.BadCredentialsException("认证失败", e));
         }
     }
 
@@ -110,16 +144,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * 发送401未授权响应
+     * Bean 销毁阶段清理 SecurityContext（P2-1：替代 {@code destroy()}，
+     * 避免覆盖 {@code GenericFilterBean.destroy()} 的 Spring 容器语义）。
      */
-    private void sendUnauthorized(HttpServletResponse response, String message) throws IOException {
-        response.setStatus(HttpStatus.UNAUTHORIZED.value());
-        response.setContentType("application/json;charset=UTF-8");
-        response.getWriter().write("{\"code\":401,\"message\":\"" + message + "\",\"data\":null}");
-    }
-
-    @Override
-    public void destroy() {
+    @PreDestroy
+    public void cleanup() {
         SecurityContextHolder.clearContext();
     }
 }
