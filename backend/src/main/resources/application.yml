@@ -36,12 +36,14 @@ spring:
     clean-disabled: true
 
 # MyBatis Plus Configuration
+# P0.12: 默认（prod/test 行为）关闭 SQL 日志，避免生产 stdout 噪声。
+# 开发场景想看 SQL 启动时加 --spring.profiles.active=dev（参见 application-dev.yml）。
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
   type-aliases-package: com.task.entity
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
   global-config:
     db-config:
       id-type: auto

@@ -1,0 +1,14 @@
+# P0.12: 开发环境 profile
+# 启动方式: mvn spring-boot:run -Dspring-boot.run.profiles=dev
+# 行为: 覆盖 mybatis-plus.configuration.log-impl，打开 SQL stdout 日志
+#       便于本地调试 SQL 拼装和参数绑定。
+# 生产环境 (prod / default) 不会加载此文件，SQL 日志保持关闭。
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+logging:
+  level:
+    com.task: DEBUG
+    com.baomidou.mybatisplus: INFO
