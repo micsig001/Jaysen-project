@@ -202,12 +202,25 @@ public class SensitiveDataAspect {
         }
     }
 
+    /**
+     * 获取当前登录用户的 userId。
+     *
+     * <p>修复（P1.10）：原先用 {@code principal.toString()} 取 userId，依赖具体
+     * {@code UserDetails} 实现（不同实现 toString 格式不一致，且默认
+     * {@code UsernamePasswordAuthenticationToken} 的 principal 是 String 时
+     * {@code toString()} 才会等于其内容）。统一改用
+     * {@link org.springframework.security.core.Authentication#getName()}，
+     * 语义稳定且与 {@code JwtAuthenticationFilter} 存入 principal 的 userId
+     * 保持一致。
+     *
+     * @return 当前用户 userId；未登录返回 {@code null}
+     */
     private String currentUserId() {
         try {
             var auth = SecurityContextHolder.getContext().getAuthentication();
             if (auth == null) return null;
-            Object principal = auth.getPrincipal();
-            return principal != null ? principal.toString() : null;
+            String name = auth.getName();
+            return (name != null && !name.isEmpty()) ? name : null;
         } catch (Exception e) {
             return null;
         }
