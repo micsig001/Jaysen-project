@@ -140,7 +140,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTaskList, acceptTask, submitTask, completeTask, rejectTask } from '@/api/task'
@@ -174,14 +174,17 @@ const pagination = reactive({
 
 const taskList = ref<any[]>([])
 
+// 监听窗口大小变化（P1.6：onUnmounted 清理 resize 监听器，避免内存泄漏）
+const handleResize = () => {
+  isMobile.value = window.innerWidth < 768
+}
+
 onMounted(() => {
   loadTasks()
-  
-  // 监听窗口大小变化
-  const handleResize = () => {
-    isMobile.value = window.innerWidth < 768
-  }
   window.addEventListener('resize', handleResize)
+})
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
 })
 
 const loadTasks = async () => {
