@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { getToken } from '@/utils/request'
+import { getUserById } from '@/api/user'
 import { useUserStore } from '@/stores/user'
+import type { UserInfo } from '@/stores/user'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -71,14 +73,32 @@ router.beforeEach(async (to, _from, next) => {
   }
 
   // 如果有token但还没有用户信息，尝试获取
+  // P0.4：调用真实 API（GET /api/users/{userId}）补齐 userInfo（含 role）
+  // 解决 isAdmin/isManager 永远 false 的问题
   if (token && !userStore.userInfo) {
     try {
-      // TODO: 调用获取用户信息API
-      // const response = await getUserInfo()
-      // userStore.setUserInfo(response.data)
+      const userId = parseUserIdFromToken(token)
+      if (!userId) {
+        // JWT 解析失败：清除 token，跳登录
+        localStorage.removeItem('access_token_encrypted')
+        localStorage.removeItem('refresh_token_encrypted')
+        next('/login')
+        return
+      }
+      const res: any = await getUserById(userId)
+      const data = res?.data ?? res
+      const userInfo: UserInfo = {
+        userId: data.userId ?? userId,
+        name: data.name ?? '',
+        avatar: data.avatarUrl,
+        role: (data.role as UserInfo['role']) ?? 'EMPLOYEE',
+        departmentId: data.departmentId
+      }
+      userStore.setUserInfo(userInfo)
     } catch {
       // Token失效，清除并跳转登录
       localStorage.removeItem('access_token_encrypted')
+      localStorage.removeItem('refresh_token_encrypted')
       next('/login')
       return
     }
@@ -98,5 +118,28 @@ router.beforeEach(async (to, _from, next) => {
 
   next()
 })
+
+/**
+ * 从 JWT token 的 payload 中读取 userId claim。
+ *
+ * 注意：只解码不验签（签名由后端 JwtAuthenticationFilter 验证）。
+ * 本方法仅用于前端路由守卫的"提示性"信息展示，权限校验以服务端为准。
+ */
+function parseUserIdFromToken(token: string): string | null {
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) return null
+    // base64url → base64
+    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+    // 补齐 padding
+    const pad = payload.length % 4
+    const padded = pad ? payload + '='.repeat(4 - pad) : payload
+    const json = atob(padded)
+    const claims = JSON.parse(json) as { userId?: string; sub?: string }
+    return claims.userId || claims.sub || null
+  } catch {
+    return null
+  }
+}
 
 export default router
