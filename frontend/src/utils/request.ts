@@ -1,7 +1,8 @@
 import axios from 'axios'
-import type { AxiosInstance, AxiosResponse } from 'axios'
+import type { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import router from '@/router'
 import { encrypt, decrypt } from './crypto'
+import type { Result } from '@/types/api'
 
 // Token存储的Key
 const ACCESS_TOKEN_KEY = 'access_token_encrypted'
@@ -47,7 +48,7 @@ const service: AxiosInstance = axios.create({
 
 // 请求拦截器
 service.interceptors.request.use(
-  (config) => {
+  (config: InternalAxiosRequestConfig) => {
     const token = getToken()
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
@@ -61,9 +62,10 @@ service.interceptors.request.use(
 
 // 响应拦截器
 service.interceptors.response.use(
+  // P2.1: 收紧 res: any → AxiosResponse<Result<T>>，统一响应格式
   (response: AxiosResponse) => {
-    const res = response.data
-    
+    const res = response.data as Result<unknown>
+
     // 如果返回的状态码不是 200，则认为是错误
     if (res.code !== 200) {
       // 401: 未授权，跳转到登录页
@@ -71,11 +73,11 @@ service.interceptors.response.use(
         removeToken()
         router.push('/login')
       }
-      
+
       return Promise.reject(new Error(res.message || '请求失败'))
     }
-    
-    return res
+
+    return res as unknown as AxiosResponse
   },
   (error) => {
     // 处理 HTTP 状态码
@@ -95,7 +97,7 @@ service.interceptors.response.use(
           break
       }
     }
-    
+
     return Promise.reject(error)
   }
 )

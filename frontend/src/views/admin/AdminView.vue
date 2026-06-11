@@ -238,6 +238,8 @@ import {
   enableUser
 } from '@/api/user'
 import { ROLE, ROLE_LABELS, ROLE_TAG_TYPES, type Role } from '@/utils/labels'
+import type { UserVO } from '@/types/api'
+import type { RoleStatsVO } from '@/api/user'
 
 // 筛选条件
 const filters = reactive({
@@ -260,8 +262,9 @@ const total = ref(0)
 const roleStats = ref<{ role: string; count: number }[]>([])
 
 // 角色统计 map（EMPLOYEE / MANAGER / ADMIN → count）
-const statsMap = computed<Record<string, number>>(() => {
-  const m: Record<string, number> = {}
+// P2.1: 收紧 Record<string, number> → RoleStatsVO
+const statsMap = computed<RoleStatsVO>(() => {
+  const m: RoleStatsVO = {}
   for (const item of roleStats.value) {
     m[item.role] = item.count
   }
@@ -270,9 +273,8 @@ const statsMap = computed<Record<string, number>>(() => {
 
 // 改角色弹窗
 const roleDialogVisible = ref(false)
-// P2.2: 从 @/utils/labels 导入常量，避免本地重复定义
-// P2.1: ref<any> 收紧为 UserVO 放到 P2.1 commit，避免 diff 跨 commit
-const selectedUser = ref<any>(null)
+// P2.1: 收紧 ref<any> → ref<UserVO | null>
+const selectedUser = ref<UserVO | null>(null)
 const newRole = ref<Role>(ROLE.EMPLOYEE)
 function getRoleLabel(role?: string) {
   return role ? (ROLE_LABELS[role as Role] ?? role) : '-'

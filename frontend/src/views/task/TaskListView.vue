@@ -69,7 +69,7 @@
             提交
           </el-button>
           <el-button
-            v-if="task.status === 'PENDING_REVIEW' && isInitiator"
+            v-if="task.status === 'PENDING_VERIFY' && isInitiator"
             size="small"
             type="success"
             @click.stop="handleComplete(task)"
@@ -77,7 +77,7 @@
             验收
           </el-button>
           <el-button
-            v-if="task.status === 'PENDING_REVIEW' && isInitiator"
+            v-if="task.status === 'PENDING_VERIFY' && isInitiator"
             size="small"
             type="warning"
             @click.stop="handleReject(task)"
@@ -108,7 +108,7 @@
           提交
         </el-button>
         <el-button
-          v-if="selectedTask?.status === 'PENDING_REVIEW'"
+          v-if="selectedTask?.status === 'PENDING_VERIFY'"
           block
           type="success"
           @click="handleComplete(selectedTask)"
@@ -116,7 +116,7 @@
           验收
         </el-button>
         <el-button
-          v-if="selectedTask?.status === 'PENDING_REVIEW'"
+          v-if="selectedTask?.status === 'PENDING_VERIFY'"
           block
           type="warning"
           @click="handleReject(selectedTask)"
@@ -146,13 +146,15 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTaskList, acceptTask, submitTask, completeTask, rejectTask } from '@/api/task'
 import { useUserStore } from '@/stores/user'
 import { STATUS_LABELS, type TaskStatus } from '@/utils/labels'
+import type { TaskVO, Priority } from '@/types/api'
 import dayjs from 'dayjs'
 
 const router = useRouter()
 const userStore = useUserStore()
 const loading = ref(false)
 const showActionSheet = ref(false)
-const selectedTask = ref<any>(null)
+// P2.1: 收紧 ref<any> → ref<TaskVO | null>
+const selectedTask = ref<TaskVO | null>(null)
 
 // 检测设备类型
 const isMobile = ref(window.innerWidth < 768)
@@ -162,9 +164,12 @@ const isInitiator = computed(() => {
   return selectedTask.value?.creatorId === userStore.userInfo?.userId
 })
 
-const filters = reactive({
+const filters = reactive<{
+  status: TaskStatus | ''
+  priority: Priority | undefined
+}>({
   status: '',
-  priority: undefined as number | undefined
+  priority: undefined
 })
 
 const pagination = reactive({
@@ -173,6 +178,9 @@ const pagination = reactive({
   total: 0
 })
 
+// P2.1: 收紧 ref<any> → ref<TaskVO | null>（selectedTask）
+//        taskList 暂留 any[]，因为 list 项运行时附加 isOverdue 字段，
+//        收紧会让 v-for / v-bind 处需新增 7+ 类型修复，性价比低
 const taskList = ref<any[]>([])
 
 // 监听窗口大小变化（P1.6：onUnmounted 清理 resize 监听器，避免内存泄漏）

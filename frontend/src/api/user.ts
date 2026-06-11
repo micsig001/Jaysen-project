@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import type { Role } from '@/types/api'
 
 /**
  * 用户管理 API
@@ -20,13 +21,24 @@ export interface ListUsersParams {
   pageNum?: number
   pageSize?: number
   keyword?: string
-  role?: 'EMPLOYEE' | 'MANAGER' | 'ADMIN'
+  role?: Role
   deptId?: number
   status?: 0 | 1
 }
 
 /**
+ * P2.1: 角色统计返回类型
+ */
+export interface RoleStatsVO {
+  EMPLOYEE?: number
+  MANAGER?: number
+  ADMIN?: number
+  [key: string]: number | undefined
+}
+
+/**
  * 分页查询用户列表（ADMIN/MANAGER）
+ * P2.1: 返回后端 Result.data（PageResult<UserVO>）
  */
 export function listUsers(params: ListUsersParams) {
   return request({
@@ -38,6 +50,7 @@ export function listUsers(params: ListUsersParams) {
 
 /**
  * 查询用户详情
+ * 返回后端 Result.data（UserVO）
  */
 export function getUserById(userId: string) {
   return request({
@@ -79,7 +92,7 @@ export function getUserRole(userId: string) {
 /**
  * 修改用户角色（ADMIN）
  */
-export function changeUserRole(userId: string, newRole: 'EMPLOYEE' | 'MANAGER' | 'ADMIN') {
+export function changeUserRole(userId: string, newRole: Role) {
   return request({
     url: `/users/${userId}/role`,
     method: 'put',

@@ -77,6 +77,7 @@ import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import { getRadiationGraph, getMultiViewGraph } from '@/api/visualization'
 import { useUserStore } from '@/stores/user'
+import type { EChartsNode, EChartsLink } from '@/types/api'
 
 const userStore = useUserStore()
 const mode = ref<'radiation' | 'multi'>('radiation')
@@ -107,16 +108,25 @@ const initChart = () => {
   chartInstance = echarts.init(chartRef.value)
 }
 
-const renderGraph = (data: any) => {
+// P2.1: GraphData 接口与后端 VisualizationController 返回对齐
+interface GraphData {
+  nodes: EChartsNode[]
+  links: EChartsLink[]
+  truncated?: boolean
+  generatedAt?: string
+}
+
+const renderGraph = (data: GraphData) => {
   if (!chartInstance) return
-  const option: any = {
+  const option = {
     tooltip: {
-      formatter: (params: any) => {
+      formatter: (params: echarts.DefaultLabelFormatterCallbackParams) => {
         if (params.dataType === 'node') {
-          return `<b>${params.name}</b><br/>任务数: ${params.value || 0}`
+          return `<b>${params.name}</b><br/>任务数: ${(params.value as number) || 0}`
         }
         if (params.dataType === 'edge') {
-          return `${params.data.source} → ${params.data.target}<br/>任务数: ${params.data.value || 0}`
+          const edgeData = params.data as EChartsLink
+          return `${edgeData.source} → ${edgeData.target}<br/>任务数: ${edgeData.value || 0}`
         }
         return ''
       },

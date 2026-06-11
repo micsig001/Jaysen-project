@@ -1,9 +1,38 @@
 import request from '@/utils/request'
+import type { Priority, TaskStatus } from '@/types/api'
+
+/**
+ * P2.1: 任务列表查询参数
+ */
+export interface TaskListParams {
+  pageNum?: number
+  pageSize?: number
+  status?: TaskStatus
+  priority?: Priority
+  keyword?: string
+  creatorId?: string
+  assigneeId?: string
+}
+
+/**
+ * P2.1: 任务创建请求体
+ */
+export interface TaskCreateRequest {
+  title: string
+  description?: string
+  priority: Priority
+  assigneeId: string
+  estimatedDuration?: number
+  sourceRemark?: string
+  // TaskCreateView 会附带 creatorId（当前用户），后端会自动忽略
+  creatorId?: string
+}
 
 /**
  * 获取任务列表
+ * P2.1: 返回后端 Result.data（PageResult<TaskVO>）
  */
-export function getTaskList(params: any) {
+export function getTaskList(params: TaskListParams) {
   return request({
     url: '/tasks',
     method: 'get',
@@ -13,6 +42,7 @@ export function getTaskList(params: any) {
 
 /**
  * 获取任务详情
+ * 返回后端 Result.data（TaskVO）
  */
 export function getTaskDetail(id: number) {
   return request({
@@ -24,7 +54,7 @@ export function getTaskDetail(id: number) {
 /**
  * 创建任务
  */
-export function createTask(data: any) {
+export function createTask(data: TaskCreateRequest) {
   return request({
     url: '/tasks',
     method: 'post',
@@ -35,7 +65,7 @@ export function createTask(data: any) {
 /**
  * 更新任务
  */
-export function updateTask(id: number, data: any) {
+export function updateTask(id: number, data: Partial<TaskCreateRequest>) {
   return request({
     url: `/tasks/${id}`,
     method: 'put',
@@ -66,7 +96,7 @@ export function acceptTask(id: number) {
 /**
  * 提交任务
  */
-export function submitTask(id: number, data: any) {
+export function submitTask(id: number, data: { remark?: string }) {
   return request({
     url: `/tasks/${id}/submit`,
     method: 'post',

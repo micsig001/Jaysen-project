@@ -3,6 +3,7 @@ import { getToken } from '@/utils/request'
 import { getUserById } from '@/api/user'
 import { useUserStore } from '@/stores/user'
 import type { UserInfo } from '@/stores/user'
+import type { UserVO } from '@/types/api'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -85,14 +86,15 @@ router.beforeEach(async (to, _from, next) => {
         next('/login')
         return
       }
-      const res: any = await getUserById(userId)
-      const data = res?.data ?? res
+      // P2.1: 收紧 res: any → UserVO
+      // getUserById 实际返回 Result.data（即 UserVO）
+      const data: UserVO = ((await getUserById(userId)) as unknown as UserVO) ?? ({} as UserVO)
       const userInfo: UserInfo = {
         userId: data.userId ?? userId,
         name: data.name ?? '',
         avatar: data.avatarUrl,
         role: (data.role as UserInfo['role']) ?? 'EMPLOYEE',
-        departmentId: data.departmentId
+        departmentId: data.departmentId ?? undefined
       }
       userStore.setUserInfo(userInfo)
     } catch {

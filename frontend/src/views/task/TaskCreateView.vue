@@ -66,6 +66,8 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { createTask } from '@/api/task'
+import { PRIORITY } from '@/utils/labels'
+import type { Priority } from '@/types/api'
 import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
@@ -73,13 +75,21 @@ const userStore = useUserStore()
 const formRef = ref()
 const submitting = ref(false)
 
-const formData = reactive({
+const formData = reactive<{
+  title: string
+  description: string
+  priority: Priority
+  assigneeId: string
+  sourceRemark: string
+  estimatedDuration: number | undefined
+  creatorId: string
+}>({
   title: '',
   description: '',
-  priority: 3,
+  priority: PRIORITY.MEDIUM,
   assigneeId: '',
   sourceRemark: '',
-  estimatedDuration: undefined as number | undefined,
+  estimatedDuration: undefined,
   // 修复（H2）：从 userStore 获取当前用户 UserID，避免后端 NOT NULL 约束失败
   creatorId: userStore.userInfo?.userId || ''
 })
