@@ -237,11 +237,12 @@ import {
   disableUser,
   enableUser
 } from '@/api/user'
+import { ROLE, ROLE_LABELS, ROLE_TAG_TYPES, type Role } from '@/utils/labels'
 
 // 筛选条件
 const filters = reactive({
   keyword: '',
-  role: '' as '' | 'EMPLOYEE' | 'MANAGER' | 'ADMIN',
+  role: '' as '' | Role,
   status: undefined as number | undefined
 })
 
@@ -269,25 +270,15 @@ const statsMap = computed<Record<string, number>>(() => {
 
 // 改角色弹窗
 const roleDialogVisible = ref(false)
+// P2.2: 从 @/utils/labels 导入常量，避免本地重复定义
+// P2.1: ref<any> 收紧为 UserVO 放到 P2.1 commit，避免 diff 跨 commit
 const selectedUser = ref<any>(null)
-const newRole = ref<'EMPLOYEE' | 'MANAGER' | 'ADMIN'>('EMPLOYEE')
-
-// 工具：角色显示
-const ROLE_LABELS: Record<string, string> = {
-  EMPLOYEE: '普通员工',
-  MANAGER: '部门经理',
-  ADMIN: '超级管理员'
-}
-const ROLE_TAG_TYPES: Record<string, '' | 'success' | 'warning' | 'danger' | 'info'> = {
-  EMPLOYEE: 'info',
-  MANAGER: 'warning',
-  ADMIN: 'danger'
-}
+const newRole = ref<Role>(ROLE.EMPLOYEE)
 function getRoleLabel(role?: string) {
-  return role ? (ROLE_LABELS[role] ?? role) : '-'
+  return role ? (ROLE_LABELS[role as Role] ?? role) : '-'
 }
 function getRoleTagType(role?: string) {
-  return role ? (ROLE_TAG_TYPES[role] ?? '') : ''
+  return role ? (ROLE_TAG_TYPES[role as Role] ?? '') : ''
 }
 
 // 工具：时间

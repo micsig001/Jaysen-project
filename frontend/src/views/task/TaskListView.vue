@@ -145,6 +145,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTaskList, acceptTask, submitTask, completeTask, rejectTask } from '@/api/task'
 import { useUserStore } from '@/stores/user'
+import { STATUS_LABELS, type TaskStatus } from '@/utils/labels'
 import dayjs from 'dayjs'
 
 const router = useRouter()
@@ -244,15 +245,7 @@ const getPriorityType = (priority: number) => {
 }
 
 const getStatusLabel = (status: string) => {
-  const labels: Record<string, string> = {
-    PENDING_ACCEPT: '待接收',
-    IN_PROGRESS: '进行中',
-    PENDING_VERIFY: '待验收',
-    COMPLETED: '已完成',
-    WITHDRAWN: '已撤回',
-    REJECTED: '已驳回'
-  }
-  return labels[status] || status
+  return STATUS_LABELS[status as TaskStatus] || status
 }
 
 const handleCreate = () => {

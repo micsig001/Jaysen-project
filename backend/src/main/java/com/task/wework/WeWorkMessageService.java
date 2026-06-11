@@ -1,6 +1,7 @@
 package com.task.wework;
 
 import com.task.entity.Task;
+import com.task.util.Labels;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -46,7 +47,7 @@ public class WeWorkMessageService {
         String description = String.format(
                 "任务名称：%s\n优先级：%s\n截止时间：%s\n请及时处理",
                 task.getTitle(),
-                getPriorityLabel(task.getPriority()),
+                Labels.getPriorityLabel(task.getPriority()),
                 task.getActualDeadline() != null ? task.getActualDeadline().toString() : "待确认"
         );
 
@@ -159,26 +160,5 @@ public class WeWorkMessageService {
         }
 
         log.error("消息推送最终失败，已达到最大重试次数: toUser={}, title={}", toUser, title);
-    }
-
-    /**
-     * 获取优先级标签
-     */
-    private String getPriorityLabel(Integer priority) {
-        if (priority == null) {
-            return "中";
-        }
-        switch (priority) {
-            case 1:
-                return "最高";
-            case 2:
-                return "高";
-            case 3:
-                return "中";
-            case 4:
-                return "低";
-            default:
-                return "中";
-        }
     }
 }

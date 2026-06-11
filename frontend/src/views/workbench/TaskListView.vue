@@ -151,6 +151,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
 import dayjs from 'dayjs'
 import { useUserStore } from '@/stores/user'
+import { PRIORITY_LABELS, PRIORITY_TAG_TYPES, type Priority } from '@/utils/labels'
 
 interface Task {
   id: number
@@ -324,23 +325,11 @@ const canVerify = (task: Task) => {
 }
 
 const getPriorityType = (priority: number) => {
-  const types: Record<number, string> = {
-    1: 'danger',
-    2: 'warning',
-    3: '',
-    4: 'info'
-  }
-  return types[priority] || ''
+  return PRIORITY_TAG_TYPES[priority as Priority] || ''
 }
 
 const getPriorityLabel = (priority: number) => {
-  const labels: Record<number, string> = {
-    1: '最高',
-    2: '高',
-    3: '中',
-    4: '低'
-  }
-  return labels[priority] || '中'
+  return PRIORITY_LABELS[priority as Priority] || '中'
 }
 
 const getStatusType = (status: string) => {
