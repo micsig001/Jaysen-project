@@ -1,11 +1,44 @@
 # 企业级任务协同管理系统
 
-> 企业微信深度集成 · 双重确认状态机 · 三级权限隔离 · 全链路可审计
+<!-- LOGO_PLACEHOLDER: 替换为 docs/assets/logo.svg 或 PNG，120x120 左右 -->
+<p align="center">
+  <img src="docs/assets/logo.svg" alt="Logo" width="120" height="120" onerror="this.style.display='none'"/>
+</p>
 
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.0-brightgreen)](https://spring.io/projects/spring-boot)
-[![Vue](https://img.shields.io/badge/Vue-3.4-brightgreen)](https://vuejs.org/)
-[![MySQL](https://img.shields.io/badge/MySQL-8.0-blue)](https://www.mysql.com/)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+<p align="center">
+  <strong>企业微信深度集成 · 双重确认状态机 · 三级权限隔离 · 全链路可审计</strong>
+</p>
+
+<p align="center">
+  <a href="#-核心特性">特性</a> ·
+  <a href="#-快速开始">快速开始</a> ·
+  <a href="#-架构概览">架构</a> ·
+  <a href="docs/DEMO_SCRIPT.md">演示脚本</a> ·
+  <a href="docs/FAQ.md">FAQ</a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Spring%20Boot-3.2.0-brightgreen" alt="Spring Boot"/>
+  <img src="https://img.shields.io/badge/Vue-3.4-brightgreen" alt="Vue"/>
+  <img src="https://img.shields.io/badge/MySQL-8.0-blue" alt="MySQL"/>
+  <img src="https://img.shields.io/badge/license-Apache%202.0-blue" alt="License"/>
+</p>
+
+---
+
+## 🎬 关键页面预览
+
+<!-- SCREENSHOT_PLACEHOLDER: 以下 5 张图分别替换为实际截图（推荐 1280x720），放在 docs/assets/screenshots/ -->
+
+| 登录页 | 我的任务 | 任务详情 |
+|:---:|:---:|:---:|
+| ![登录](docs/assets/screenshots/login.png) | ![任务列表](docs/assets/screenshots/task-list.png) | ![任务详情](docs/assets/screenshots/task-detail.png) |
+
+| 关系图谱 | 管理后台 |
+|:---:|:---:|
+| ![可视化](docs/assets/screenshots/visualization.png) | ![管理](docs/assets/screenshots/admin.png) |
+
+> 📌 占位说明：以上截图路径使用相对路径，未生成实际图片时浏览器会显示 alt 文字，不会破图。
 
 ---
 
@@ -13,7 +46,25 @@
 
 企业内部任务管理工具，深度集成**企业微信**，实现任务的数字化流转、工时统计、超时预警以及复杂协作关系的可视化。适用于 50-500 人规模的中小型团队。
 
-### 核心特性
+## ✨ 核心特性
+
+<div align="center">
+
+| 🏢 企微免登录 | 🔒 双重确认 | 👥 三级权限 |
+|:---:|:---:|:---:|
+| 工作台点击即用，零学习成本 | 接收 → 验收 严谨闭环 | 自动按部门/全公司隔离 |
+
+| 📊 可视化图谱 | 🛡️ 数据脱敏 | ⚡ 幂等性 |
+|:---:|:---:|:---:|
+| ECharts 力导向，单人/全景图 | 身份证/手机/薪资自动脱敏 | Redis SETNX + DB UNIQUE |
+
+| 📝 全链路审计 | 🗄️ 归档防雷 |
+|:---:|:---:|
+| 含变更前后快照 | 创建 > 1 年才归档 |
+
+</div>
+
+### 特性详解
 
 - ✅ **企业微信免登录** —— 员工在企微工作台点击应用即用，零学习成本
 - ✅ **双重确认状态机** —— 任务接收和验收的严谨闭环，避免扯皮
@@ -224,6 +275,8 @@ npm run dev
 - 📄 [CHANGELOG.md](CHANGELOG.md) —— 变更日志
 - 📄 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) —— 部署指南
 - 📄 [docs/OPERATIONS.md](docs/OPERATIONS.md) —— 运维手册
+- 🎬 [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) —— 5 分钟客户演示走查脚本
+- ❓ [docs/FAQ.md](docs/FAQ.md) —— 常见 10 个问题
 - 🌐 **Swagger UI**：启动后访问 `http://localhost:8080/swagger-ui.html`
 
 ---
