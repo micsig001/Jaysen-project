@@ -1,0 +1,100 @@
+server:
+  port: 0  # 随机端口，避免与开发环境冲突
+
+spring:
+  application:
+    name: enterprise-task-system-test
+
+  # B1: H2 in-memory DB（MySQL 兼容模式，关闭 Flyway）
+  datasource:
+    url: jdbc:h2:mem:task_system_test;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+
+  # Flyway 关闭（测试用 H2 + schema-h2.sql）
+  flyway:
+    enabled: false
+
+  # H2 schema 由 spring.sql.init 加载
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/test/schema-h2.sql
+      continue-on-error: false
+
+  # Redis 走内嵌 mock（@MockBean 注入到具体测试用例；这里仅禁用自动配置）
+  data:
+    redis:
+      repositories:
+        enabled: false
+
+  # B1: 排除 Redis 客户端连接池的连接尝试（避免在测试启动时连不上真实 Redis）
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+
+# MyBatis Plus
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.task.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# JWT（@SpringBootTest 必须有 secret，否则 JwtTokenProvider 启动失败）
+jwt:
+  secret: test-jwt-secret-for-springboot-integration-tests-32chars-padding
+  expiration: 7200000
+  refresh-expiration: 604800000
+
+# 应用配置
+app:
+  frontend-base-url: http://localhost:5173
+  file-download-secret: test-file-download-secret-for-springboot-tests-32chars
+
+# 企微配置（FakeClient 走假数据，不依赖真实 corp）
+wework:
+  corp-id: TEST_CORP_ID
+  agent-id: 0
+  secret: TEST_SECRET
+  message:
+    enabled: false
+
+# 归档功能（测试场景下关掉，避免 scheduler 触发）
+archive:
+  enabled: false
+  cron: "-"
+  batch-size: 100
+  interval-months: 12
+  max-runtime-minutes: 1
+  lock-key: "task:archive:lock"
+  lock-expire-seconds: 60
+
+# Storage（本地存储路径指向临时目录）
+storage:
+  type: local
+  local:
+    path: ${java.io.tmpdir}/task-test-uploads
+
+# 脱敏
+sensitive-data:
+  enabled: false
+
+# 幂等清理 cron（避免测试启动时触发清理）
+idempotency:
+  cleanup-cron: "-"
+
+logging:
+  level:
+    root: WARN
+    com.task: INFO
+    org.springframework.boot: WARN
+    org.springframework.test: WARN
