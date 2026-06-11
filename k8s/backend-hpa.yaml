@@ -1,0 +1,50 @@
+# ============================================================
+# HorizontalPodAutoscaler: Backend
+# ------------------------------------------------------------
+# 策略：
+#   - 最小 2 副本（高可用下限）
+#   - 最大 10 副本（控制成本）
+#   - CPU 平均使用率 > 70% 触发扩容
+#   - 冷却：扩容 60s 无新事件、缩容 300s 稳定
+#   - 平均内存 > 80% 也触发（双指标更稳）
+# ============================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend-hpa
+  namespace: task-system
+  labels:
+    app: backend
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backend
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 60

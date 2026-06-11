@@ -1,0 +1,163 @@
+# ============================================================
+# NetworkPolicy: 默认 deny-all + 白名单
+# ------------------------------------------------------------
+# 目标：限制 pod 之间的网络访问，仅允许必要流量
+# 行为：
+#   1) 默认拒绝所有 ingress/egress（同 namespace 内、外部都阻）
+#   2) 白名单：
+#      - ingress: ingress-nginx -> frontend-service (80)
+#      - ingress: frontend-service -> backend-service (8080)
+#      - ingress: prometheus/kubectl exec -> 各服务 (调试探针)
+#      - egress: backend -> mysql (3306)
+#      - egress: backend -> redis (6379)
+#      - egress: backend -> WeWork API (443) 等外部 HTTPS
+#   3) DNS 出口：允许到 kube-system/coredns (53)
+#
+# ⚠️ 注意：
+#   - 需要 K8s 集群启用 NetworkPolicy（大多数 CNI 已支持：Calico/Cilium/Weave）
+#   - 部署后若 pod 无法启动，先 kubectl describe networkpolicy 检查
+# ============================================================
+---
+# 1. 默认 deny-all（先建这条，再叠加白名单）
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: task-system
+spec:
+  podSelector: {}  # 匹配 namespace 内所有 pod
+  policyTypes:
+    - Ingress
+    - Egress
+  # 空规则 = 拒绝所有入口和出口
+---
+# 2. 允许 ingress-nginx 访问 frontend
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-frontend
+  namespace: task-system
+spec:
+  podSelector:
+    matchLabels:
+      app: frontend
+  policyTypes:
+    - Ingress
+  ingress:
+    # 允许来自任何 namespace 的 ingress controller（命名空间是 ingress-nginx 常见默认）
+    - from:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 80
+---
+# 3. 允许 frontend 访问 backend（反代 /api/*）
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend-to-backend
+  namespace: task-system
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: frontend
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+# 4. 允许 backend 出口到 MySQL/Redis/DNS/外部 HTTPS
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-backend-egress
+  namespace: task-system
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+  policyTypes:
+    - Egress
+  egress:
+    # DNS 解析（kube-dns / coredns）
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # MySQL（StatefulSet pod）
+    - to:
+        - podSelector:
+            matchLabels:
+              app: mysql
+      ports:
+        - protocol: TCP
+          port: 3306
+    # Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    # 外部 HTTPS（WeWork API、对象存储等）
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443
+---
+# 5. 允许 mysql/redis 接受 backend 的入站（默认 deny 后必须显式放行）
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-mysql-ingress-from-backend
+  namespace: task-system
+spec:
+  podSelector:
+    matchLabels:
+      app: mysql
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: backend
+      ports:
+        - protocol: TCP
+          port: 3306
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-redis-ingress-from-backend
+  namespace: task-system
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: backend
+      ports:
+        - protocol: TCP
+          port: 6379

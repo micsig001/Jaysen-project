@@ -18,6 +18,9 @@ k8s/
 ├── frontend-nginx-configmap.yaml  # nginx 配置（serve 静态 + 反代 /api）
 ├── frontend-deployment.yaml    # 前端 Deployment + Service
 ├── ingress.yaml                # Ingress + (可选) cert-manager ClusterIssuer
+├── network-policy.yaml         # P2.7: 默认 deny-all + 白名单 NetworkPolicy
+├── backend-hpa.yaml            # P2.7: Backend HPA（min 2 / max 10 / CPU 70%）
+├── frontend-hpa.yaml           # P2.7: Frontend HPA
 ├── kustomization.yaml          # Kustomize 入口
 └── README.md                   # 本文件
 ```

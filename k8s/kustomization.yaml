@@ -27,6 +27,11 @@ resources:
   - frontend-nginx-configmap.yaml
   - frontend-deployment.yaml
   - ingress.yaml
+  # P2.7: 默认 deny-all NetworkPolicy + 显式白名单
+  - network-policy.yaml
+  # P2.7: HPA 自动扩缩容
+  - backend-hpa.yaml
+  - frontend-hpa.yaml
 
 # 通用 label，自动打到所有资源上
 labels:
