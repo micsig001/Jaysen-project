@@ -236,6 +236,13 @@ public class ArchiveService {
     /**
      * 尝试获取分布式锁
      * 使用 SET key value NX EX 实现
+     *
+     * <p>P2.8 行为变更：Redis 不可用时（连接超时 / 拒绝连接 等），
+     * 默认 fail-fast 返回 false，外层视为"未获锁"直接 SKIPPED。
+     * 这避免旧版"降级为单实例模式"导致多实例同时跑、重复迁移数据。</p>
+     *
+     * <p>如需兼容旧行为（仅单实例部署），将 archive.lock-fail-fast 设为 false。
+     * 强烈建议多实例部署时保持 true。</p>
      */
     private Boolean tryLock(String key, String value, long expireSeconds) {
         try {
@@ -244,7 +251,14 @@ public class ArchiveService {
             return result;
         } catch (Exception e) {
             log.error("[归档] 获取分布式锁异常", e);
-            // Redis 异常时降级为单实例模式（不阻塞归档）
+            Boolean failFast = archiveProperties.getLockFailFast();
+            if (Boolean.TRUE.equals(failFast)) {
+                // P2.8 新行为：fail-fast，返回 false 让外层 SKIPPED
+                log.error("[归档] Redis 不可用，按 lock-fail-fast=true 策略中止本次归档");
+                return false;
+            }
+            // 旧行为：降级为单实例模式（仅单实例部署可用，多实例会数据重复）
+            log.warn("[归档] Redis 不可用，按 lock-fail-fast=false 策略降级执行（仅适合单实例）");
             return true;
         }
     }

@@ -78,6 +78,8 @@ class ArchiveServiceTest {
         lenient().when(properties.getBatchSize()).thenReturn(1000);
         lenient().when(properties.getLockKey()).thenReturn("task:archive:lock");
         lenient().when(properties.getLockExpireSeconds()).thenReturn(3600L);
+        // P2.8: 默认 fail-fast=true
+        lenient().when(properties.getLockFailFast()).thenReturn(true);
     }
 
     // ============================================
@@ -136,8 +138,28 @@ class ArchiveServiceTest {
     }
 
     @Test
-    @DisplayName("executeArchive: Redis 异常 → 降级为单实例模式")
-    void executeArchive_redisDown() {
+    @DisplayName("executeArchive: Redis 异常 + fail-fast=true (默认) → SKIPPED (P2.8)")
+    void executeArchive_redisDown_failFast() {
+        // P2.8: 默认 fail-fast=true，Redis 异常时中止归档，保护多实例数据一致性
+        when(properties.getLockFailFast()).thenReturn(true);
+        when(redisTemplate.opsForValue()).thenReturn(valueOps);
+        when(valueOps.setIfAbsent(anyString(), anyString(), any(Duration.class)))
+                .thenThrow(new RuntimeException("Redis 连接失败"));
+
+        ArchiveResultVO result = archiveService.executeArchive("MANUAL", ADMIN_ID);
+
+        // 关键：返回 SKIPPED，不再降级执行
+        assertThat(result.getStatus()).isEqualTo("SKIPPED");
+        assertThat(result.getMessage()).contains("分布式锁");
+        // 不应执行任何归档（防止多实例竞态）
+        verify(archiveMapper, never()).insertBatchFromTasks(any(), anyInt());
+    }
+
+    @Test
+    @DisplayName("executeArchive: Redis 异常 + fail-fast=false → 降级 SUCCESS (旧行为，opt-in)")
+    void executeArchive_redisDown_degrade() {
+        // P2.8: 仅当显式设置 lock-fail-fast=false 时才降级（仅适合单实例部署）
+        when(properties.getLockFailFast()).thenReturn(false);
         when(redisTemplate.opsForValue()).thenReturn(valueOps);
         when(valueOps.setIfAbsent(anyString(), anyString(), any(Duration.class)))
                 .thenThrow(new RuntimeException("Redis 连接失败"));
@@ -145,7 +167,7 @@ class ArchiveServiceTest {
 
         ArchiveResultVO result = archiveService.executeArchive("MANUAL", ADMIN_ID);
 
-        // Redis 挂了不能阻塞归档，降级执行
+        // 旧行为：降级执行
         assertThat(result.getStatus()).isEqualTo("SUCCESS");
     }
 

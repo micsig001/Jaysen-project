@@ -57,8 +57,19 @@ public class ArchiveProperties {
     private String lockKey = "task:archive:lock";
 
     /**
-     * 分布式锁过期时间（秒）
+     * Redis 分布式锁过期时间（秒）
      * 兜底机制，防止服务异常导致锁永不释放
      */
     private Long lockExpireSeconds = 3600L;
+
+    /**
+     * P2.8: Redis 不可用时是否 fail-fast
+     *
+     * <p>旧行为（false）：catch 异常后返回 true，让单实例模式继续跑。
+     * 风险：多实例同时跑会数据重复迁移。</p>
+     *
+     * <p>新行为（true，默认）：catch 异常后返回 false，外层视为"获取锁失败"，
+     * 直接 SKIPPED/FAILED。保护多实例数据一致性。</p>
+     */
+    private Boolean lockFailFast = true;
 }

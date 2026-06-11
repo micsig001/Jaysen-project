@@ -89,6 +89,8 @@ archive:
   max-runtime-minutes: ${ARCHIVE_MAX_RUNTIME:180}      # 单次归档最长执行时间（防长跑）
   lock-key: "task:archive:lock"                        # Redis 分布式锁 Key
   lock-expire-seconds: 3600                            # 锁过期时间（兜底）
+  # P2.8: Redis 不可用时是否 fail-fast（默认 true，保护多实例数据一致性）
+  lock-fail-fast: ${ARCHIVE_LOCK_FAIL_FAST:true}
 
 # Storage Configuration
 storage:
