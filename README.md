@@ -77,6 +77,32 @@
 
 ---
 
+## 📊 项目状态（2026-06-11）
+
+> 🎯 **本项目已达上线标准**（99% 完成度）。下方数据反映最新 main 分支（`19c2993`）。
+
+| 指标 | 数值 |
+|------|------|
+| 总 commit | 30 个 |
+| 后端测试 | 152 个（0 → 152，mvn test 全过） |
+| 前端 build | ✅ 通过（10 个 views，~700KB gzip） |
+| P0 / P1 / P2 | **全清**（详见 [`.mavis/plans/p0p1-fixes.md`](.mavis/plans/p0p1-fixes.md)） |
+| 完成度 | **~99%** |
+| GitHub | [`micsig001/Jaysen-project`](https://github.com/micsig001/Jaysen-project) HEAD `19c2993` |
+| 剩余 P3（长期） | 4 项：敏感字段加密 / E2E 测试 / Prometheus+Grafana 监控 / Sentinel 限流 |
+
+### 上线前需准备（PM 检查清单）
+
+- [ ] UAT 通过（拉 2-3 个真实用户走查 5 分钟演示脚本）
+- [ ] 灰度环境部署（[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)）
+- [ ] **上线 Runbook** 已就绪（[`docs/RUNBOOK.md`](docs/RUNBOOK.md)）
+- [ ] 客户通知邮件 / 灰度 SOP
+- [ ] 第一个 ADMIN 账号（参考 [`docs/DEPLOYMENT.md` §5](docs/DEPLOYMENT.md)）
+- [ ] Prometheus 抓 `/actuator/metrics`（见 RUNBOOK §5）
+- [ ] Sentry / ELK 接错误日志
+
+---
+
 ## 技术栈
 
 ### 后端
