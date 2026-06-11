@@ -148,7 +148,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import axios from 'axios'
+import request from '@/utils/request'
 import dayjs from 'dayjs'
 import { useUserStore } from '@/stores/user'
 
@@ -223,11 +223,11 @@ const loadTasks = async () => {
     if (filters.status) params.status = filters.status
     if (filters.priority) params.priority = filters.priority
 
-    const response = await axios.get('/api/tasks/my', { params })
+    const response: any = await request({ url: '/tasks/my', method: 'get', params })
 
-    if (response.data.code === 200) {
-      tasks.value = response.data.data.items
-      total.value = response.data.data.total
+    if (response.code === 200) {
+      tasks.value = response.data.items
+      total.value = response.data.total
     }
   } catch (error) {
     console.error('Load tasks error:', error)
@@ -250,7 +250,7 @@ const viewTaskDetail = (taskId: number) => {
 
 const handleAccept = async (task: Task) => {
   try {
-    await axios.post(`/api/tasks/${task.id}/accept`)
+    await request({ url: `/tasks/${task.id}/accept`, method: 'post' })
     ElMessage.success('已确认接收')
     loadTasks()
   } catch (error) {
@@ -260,7 +260,7 @@ const handleAccept = async (task: Task) => {
 
 const handleSubmit = async (task: Task) => {
   try {
-    await axios.post(`/api/tasks/${task.id}/submit`)
+    await request({ url: `/tasks/${task.id}/submit`, method: 'post' })
     ElMessage.success('已提交完成，等待验收')
     loadTasks()
   } catch (error) {
@@ -270,7 +270,7 @@ const handleSubmit = async (task: Task) => {
 
 const handleVerify = async (task: Task) => {
   try {
-    await axios.post(`/api/tasks/${task.id}/verify`)
+    await request({ url: `/tasks/${task.id}/verify`, method: 'post' })
     ElMessage.success('已确认完成')
     loadTasks()
   } catch (error) {
@@ -285,7 +285,7 @@ const handleReject = async (task: Task) => {
       cancelButtonText: '取消'
     })
 
-    await axios.post(`/api/tasks/${task.id}/reject`, { reason })
+    await request({ url: `/tasks/${task.id}/reject`, method: 'post', data: { reason } })
     ElMessage.success('已驳回')
     loadTasks()
   } catch (error) {

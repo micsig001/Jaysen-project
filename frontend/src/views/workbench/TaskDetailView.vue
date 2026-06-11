@@ -60,7 +60,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import axios from 'axios'
+import request from '@/utils/request'
 import dayjs from 'dayjs'
 
 const route = useRoute()
@@ -76,9 +76,9 @@ onMounted(() => {
 const loadTaskDetail = async () => {
   loading.value = true
   try {
-    const response = await axios.get(`/api/tasks/${route.params.id}`)
-    if (response.data.code === 200) {
-      task.value = response.data.data
+    const response: any = await request({ url: `/tasks/${route.params.id}`, method: 'get' })
+    if (response.code === 200) {
+      task.value = response.data
     }
   } catch (error) {
     ElMessage.error('加载任务详情失败')
@@ -89,7 +89,7 @@ const loadTaskDetail = async () => {
 
 const handleAccept = async () => {
   try {
-    await axios.post(`/api/tasks/${task.value.id}/accept`)
+    await request({ url: `/tasks/${task.value.id}/accept`, method: 'post' })
     ElMessage.success('已确认接收')
     loadTaskDetail()
   } catch (error) {
@@ -99,7 +99,7 @@ const handleAccept = async () => {
 
 const handleSubmit = async () => {
   try {
-    await axios.post(`/api/tasks/${task.value.id}/submit`)
+    await request({ url: `/tasks/${task.value.id}/submit`, method: 'post' })
     ElMessage.success('已提交完成')
     loadTaskDetail()
   } catch (error) {
