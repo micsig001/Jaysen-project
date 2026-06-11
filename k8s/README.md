@@ -180,6 +180,37 @@ kubectl -n task-system rollout status deployment/backend
 kubectl -n task-system rollout status deployment/frontend
 ```
 
+### 版本管理（**禁止 :latest**）
+
+P2.3：所有镜像必须用具体版本号（语义化版本，例如 `v1.2.3`）。
+**绝不使用 `:latest`**，原因：
+
+- 滚动更新时 `imagePullPolicy: IfNotPresent` 会跳过拉取，多副本间可能版本不一致
+- 故障回滚时无法确定回滚到哪个 tag
+- K8s Deployment 的 rollout 历史会丢失原始版本信息
+
+**推荐做法（CI 中）**：
+
+```bash
+# 方式 1：kustomize edit set image
+kustomize edit set image \
+  <YOUR_REGISTRY>/task-backend=<YOUR_REGISTRY>/task-backend:${CI_COMMIT_TAG} \
+  <YOUR_REGISTRY>/task-frontend=<YOUR_REGISTRY>/task-frontend:${CI_COMMIT_TAG}
+
+# 方式 2：kubectl set image
+kubectl -n task-system set image deployment/backend \
+  backend=<YOUR_REGISTRY>/task-backend:${CI_COMMIT_TAG}
+kubectl -n task-system set image deployment/frontend \
+  frontend=<YOUR_REGISTRY>/task-frontend:${CI_COMMIT_TAG}
+```
+
+**回滚到上一版本**：
+
+```bash
+kubectl -n task-system rollout undo deployment/backend
+kubectl -n task-system rollout undo deployment/frontend
+```
+
 ---
 
 ## 数据备份 / 清理

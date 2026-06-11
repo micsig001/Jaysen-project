@@ -50,8 +50,13 @@ spec:
     spec:
       containers:
         - name: frontend
-          # ⚠️ 生产请改为具体版本号
-          image: <YOUR_REGISTRY>/task-frontend:latest
+          # ⚠️ 占位符：生产请改为具体版本号 ${VERSION}，例如 task-frontend:1.2.3
+          # 推荐通过 kustomize 覆盖：
+          #   kustomize edit set image <YOUR_REGISTRY>/task-frontend=<YOUR_REGISTRY>/task-frontend:1.2.3
+          # 或 kubectl set image：
+          #   kubectl -n task-system set image deployment/frontend \
+          #     frontend=<YOUR_REGISTRY>/task-frontend:1.2.3
+          image: <YOUR_REGISTRY>/task-frontend:${VERSION}
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

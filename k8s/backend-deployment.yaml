@@ -82,8 +82,13 @@ spec:
                 name: task-config
       containers:
         - name: backend
-          # ⚠️ 生产请改为具体版本号，例如 task-backend:1.2.3
-          image: <YOUR_REGISTRY>/task-backend:latest
+          # ⚠️ 占位符：生产请改为具体版本号 ${VERSION}，例如 task-backend:1.2.3
+          # 推荐通过 kustomize 覆盖：
+          #   kustomize edit set image <YOUR_REGISTRY>/task-backend=<YOUR_REGISTRY>/task-backend:1.2.3
+          # 或 kubectl set image：
+          #   kubectl -n task-system set image deployment/backend \
+          #     backend=<YOUR_REGISTRY>/task-backend:1.2.3
+          image: <YOUR_REGISTRY>/task-backend:${VERSION}
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

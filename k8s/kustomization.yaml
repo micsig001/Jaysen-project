@@ -40,17 +40,23 @@ annotations:
   app.kubernetes.io/managed-by: kustomize
 
 # ------------------------------------------------------------
-# 镜像覆盖（如需在 CI 中通过命令行指定镜像 tag）：
-#   kubectl apply -k k8s/ \
-#     --enable-helm \
-#     # 或使用 --image 单独覆盖
-#   kubectl set image -n task-system deployment/backend \
-#     backend=your-registry/task-backend:v1.2.3
+# 镜像覆盖（部署时必须改 ${VERSION}）：
+#   方式 1：命令行（CI 推荐）
+#     kustomize edit set image \
+#       <YOUR_REGISTRY>/task-backend=<YOUR_REGISTRY>/task-backend:v1.2.3 \
+#       <YOUR_REGISTRY>/task-frontend=<YOUR_REGISTRY>/task-frontend:v1.2.3
+#   方式 2：kubectl set image
+#     kubectl -n task-system set image deployment/backend \
+#       backend=<YOUR_REGISTRY>/task-backend:v1.2.3
+#     kubectl -n task-system set image deployment/frontend \
+#       frontend=<YOUR_REGISTRY>/task-frontend:v1.2.3
 # ------------------------------------------------------------
 images:
   - name: <YOUR_REGISTRY>/task-backend
     newName: <YOUR_REGISTRY>/task-backend
-    newTag: latest
+    # ⚠️ 部署时改为具体版本号（例如 v1.2.3），禁止使用 :latest
+    newTag: ${VERSION}
   - name: <YOUR_REGISTRY>/task-frontend
     newName: <YOUR_REGISTRY>/task-frontend
-    newTag: latest
+    # ⚠️ 部署时改为具体版本号（例如 v1.2.3），禁止使用 :latest
+    newTag: ${VERSION}
