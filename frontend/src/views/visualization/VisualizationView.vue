@@ -44,11 +44,24 @@
         <p class="tip">说明：展示这些人之间所有任务流转关系（最多 50 人）</p>
       </div>
 
-      <!-- ECharts 图表 -->
-      <div ref="chartRef" class="chart-container"></div>
+      <!-- ECharts 图表 / loading / 空状态 -->
+      <div v-if="loading" class="chart-skeleton">
+        <el-skeleton :rows="8" animated />
+        <p class="loading-tip">正在加载关系数据...</p>
+      </div>
+      <div
+        v-else-if="!hasGraph"
+        class="chart-empty"
+      >
+        <el-empty
+          :description="mode === 'radiation' ? '请输入中心用户 UserID 并点击生成' : '请输入至少 2 个用户 ID 并点击生成'"
+          :image-size="100"
+        />
+      </div>
+      <div v-show="!loading && hasGraph" ref="chartRef" class="chart-container"></div>
 
       <!-- 统计信息 -->
-      <div v-if="stats" class="stats">
+      <div v-if="hasGraph && stats" class="stats">
         <el-tag>节点数: {{ stats.nodes }}</el-tag>
         <el-tag>边数: {{ stats.links }}</el-tag>
         <el-tag v-if="stats.truncated" type="warning">已截断（超过 50 人）</el-tag>
@@ -59,7 +72,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import { getRadiationGraph, getMultiViewGraph } from '@/api/visualization'
@@ -80,6 +93,9 @@ const stats = reactive({
   truncated: false,
   generatedAt: '',
 })
+
+// 是否已生成过图（控制空状态展示）
+const hasGraph = computed(() => stats.nodes > 0 || stats.links > 0)
 
 const handleModeChange = () => {
   // 切换模式时清空图表
@@ -255,9 +271,91 @@ onUnmounted(() => {
   border-radius: 4px;
 }
 
+.chart-skeleton {
+  width: 100%;
+  height: 600px;
+  background: #fafafa;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.chart-skeleton .loading-tip {
+  margin-top: 16px;
+  color: #909399;
+  font-size: 13px;
+}
+
+.chart-empty {
+  width: 100%;
+  height: 600px;
+  background: #fafafa;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .stats {
   display: flex;
   gap: 12px;
   margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+/* 移动端适配：图表高度降低，操作按钮换行 */
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .header-actions {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .header-actions :deep(.el-radio-group) {
+    width: 100%;
+  }
+
+  .header-actions :deep(.el-radio-button) {
+    flex: 1;
+  }
+
+  .controls :deep(.el-form) {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .controls :deep(.el-form-item) {
+    margin-right: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .controls :deep(.el-form-item .el-input),
+  .controls :deep(.el-form-item .el-button) {
+    width: 100% !important;
+    max-width: 100%;
+  }
+
+  .chart-container,
+  .chart-skeleton,
+  .chart-empty {
+    height: 360px;
+  }
+
+  .stats {
+    font-size: 12px;
+  }
 }
 </style>

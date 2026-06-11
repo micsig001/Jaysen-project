@@ -120,12 +120,27 @@
     </el-card>
 
     <!-- Mobile Action Sheet -->
-    <el-action-sheet
+    <el-drawer
       v-model="showActionSheet"
-      :actions="currentActions"
-      @select="handleActionSelect"
+      direction="bottom"
+      size="auto"
+      :with-header="false"
       v-if="isMobile && selectedTask"
-    />
+    >
+      <div class="action-sheet">
+        <h4 class="action-sheet-title">{{ selectedTask.title }}</h4>
+        <el-button
+          v-for="action in currentActions"
+          :key="action.value"
+          block
+          :type="action.type || 'default'"
+          @click="handleActionSelect(action)"
+        >
+          {{ action.label }}
+        </el-button>
+        <el-button block @click="showActionSheet = false">取消</el-button>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
@@ -180,15 +195,15 @@ const currentActions = computed(() => {
   const actions: any[] = []
 
   if (selectedTask.value.status === 'PENDING_ACCEPT') {
-    actions.push({ label: '确认接收', value: 'accept' })
+    actions.push({ label: '确认接收', value: 'accept', type: 'primary' })
   } else if (selectedTask.value.status === 'IN_PROGRESS') {
-    actions.push({ label: '提交完成', value: 'submit' })
+    actions.push({ label: '提交完成', value: 'submit', type: 'primary' })
   } else if (selectedTask.value.status === 'PENDING_VERIFY' && canVerify(selectedTask.value)) {
-    actions.push({ label: '确认完成', value: 'verify' })
-    actions.push({ label: '驳回重做', value: 'reject' })
+    actions.push({ label: '确认完成', value: 'verify', type: 'primary' })
+    actions.push({ label: '驳回重做', value: 'reject', type: 'warning' })
   }
 
-  actions.push({ label: '查看详情', value: 'detail' })
+  actions.push({ label: '查看详情', value: 'detail', type: 'default' })
   return actions
 })
 
@@ -449,6 +464,21 @@ const formatTime = (time: string) => {
   padding: 16px 0 0;
   display: flex;
   justify-content: flex-end;
+}
+
+.action-sheet {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.action-sheet-title {
+  margin: 0 0 8px;
+  font-size: 15px;
+  color: #303133;
+  text-align: center;
+  font-weight: 500;
 }
 
 /* Mobile optimization */

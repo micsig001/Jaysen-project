@@ -71,14 +71,21 @@
       </el-form>
 
       <!-- 列表 -->
-      <el-table
-        v-loading="loading"
-        :data="taskList"
-        stripe
-        border
-        style="width: 100%"
-        empty-text="暂无历史任务"
-      >
+      <div class="table-scroll-wrapper">
+        <el-table
+          v-loading="loading"
+          :data="taskList"
+          stripe
+          border
+          style="width: 100%"
+        >
+          <template #empty>
+            <el-empty
+              v-if="!loading"
+              description="暂无历史任务，试试调整筛选条件"
+              :image-size="80"
+            />
+          </template>
         <el-table-column prop="taskNo" label="任务编号" width="160" />
         <el-table-column prop="title" label="任务标题" min-width="200" show-overflow-tooltip />
         <el-table-column label="优先级" width="90" align="center">
@@ -105,6 +112,7 @@
           </template>
         </el-table-column>
       </el-table>
+      </div>
 
       <!-- 分页 -->
       <div class="pagination">
@@ -399,5 +407,39 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   margin-top: 16px;
+}
+
+.table-scroll-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 移动端：日期选择器上下布局 + 筛选表单整行竖排 + 头部 actions 竖排 */
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .header-actions {
+    justify-content: flex-end;
+  }
+
+  :deep(.filter-form .el-form-item) {
+    display: block;
+    margin-right: 0;
+  }
+
+  :deep(.filter-form .el-form-item .el-input),
+  :deep(.filter-form .el-form-item .el-select),
+  :deep(.filter-form .el-form-item .el-date-editor) {
+    width: 100% !important;
+    max-width: 100%;
+  }
+
+  :deep(.el-dialog) {
+    width: 92vw !important;
+  }
 }
 </style>

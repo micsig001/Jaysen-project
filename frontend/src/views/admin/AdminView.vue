@@ -2,22 +2,31 @@
   <div class="admin-container">
     <!-- 顶部统计卡片 -->
     <el-row :gutter="16" class="stat-row">
-      <el-col :span="8">
+      <el-col :xs="24" :sm="12" :md="8">
         <el-card shadow="hover" class="stat-card stat-employee">
           <div class="stat-label">普通员工</div>
-          <div class="stat-value">{{ statsMap.EMPLOYEE ?? '-' }}</div>
+          <div v-if="statsLoading" class="stat-value">
+            <el-skeleton-item variant="text" style="width: 60%; height: 32px" />
+          </div>
+          <div v-else class="stat-value">{{ statsMap.EMPLOYEE ?? 0 }}</div>
         </el-card>
       </el-col>
-      <el-col :span="8">
+      <el-col :xs="24" :sm="12" :md="8">
         <el-card shadow="hover" class="stat-card stat-manager">
           <div class="stat-label">部门经理</div>
-          <div class="stat-value">{{ statsMap.MANAGER ?? '-' }}</div>
+          <div v-if="statsLoading" class="stat-value">
+            <el-skeleton-item variant="text" style="width: 60%; height: 32px" />
+          </div>
+          <div v-else class="stat-value">{{ statsMap.MANAGER ?? 0 }}</div>
         </el-card>
       </el-col>
-      <el-col :span="8">
+      <el-col :xs="24" :sm="12" :md="8">
         <el-card shadow="hover" class="stat-card stat-admin">
           <div class="stat-label">超级管理员</div>
-          <div class="stat-value">{{ statsMap.ADMIN ?? '-' }}</div>
+          <div v-if="statsLoading" class="stat-value">
+            <el-skeleton-item variant="text" style="width: 60%; height: 32px" />
+          </div>
+          <div v-else class="stat-value">{{ statsMap.ADMIN ?? 0 }}</div>
         </el-card>
       </el-col>
     </el-row>
@@ -66,14 +75,22 @@
       </div>
 
       <!-- 表格 -->
-      <el-table
-        v-loading="loading"
-        :data="userList"
-        border
-        stripe
-        style="width: 100%; margin-top: 16px"
-        :header-cell-style="{ background: '#fafafa' }"
-      >
+      <div class="table-scroll-wrapper">
+        <el-table
+          v-loading="loading"
+          :data="userList"
+          border
+          stripe
+          style="width: 100%; margin-top: 16px"
+          :header-cell-style="{ background: '#fafafa' }"
+        >
+          <template #empty>
+            <el-empty
+              v-if="!loading"
+              description="暂无用户数据，试试调整筛选条件"
+              :image-size="80"
+            />
+          </template>
         <el-table-column prop="name" label="姓名" width="100" />
         <el-table-column prop="userId" label="UserID" width="140" />
         <el-table-column label="角色" width="120">
@@ -150,6 +167,7 @@
           </template>
         </el-table-column>
       </el-table>
+      </div>
 
       <!-- 分页 -->
       <el-pagination
@@ -234,6 +252,7 @@ const pagination = reactive({
 })
 
 const loading = ref(false)
+const statsLoading = ref(true)
 const submitting = ref(false)
 const userList = ref<any[]>([])
 const total = ref(0)
@@ -301,11 +320,14 @@ const loadUsers = async () => {
 
 // 加载角色统计
 const loadRoleStats = async () => {
+  statsLoading.value = true
   try {
     const res: any = await getRoleStats()
     roleStats.value = Array.isArray(res) ? res : []
   } catch {
     roleStats.value = []
+  } finally {
+    statsLoading.value = false
   }
 }
 
@@ -452,5 +474,32 @@ onMounted(async () => {
   color: #909399;
   cursor: help;
   vertical-align: middle;
+}
+
+/* 移动端适配：表格横向滚动 + 筛选栏整行竖排 */
+.table-scroll-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+  .stat-row .el-col {
+    margin-bottom: 12px;
+  }
+
+  .stat-value {
+    font-size: 28px;
+  }
+
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-bar .el-input,
+  .filter-bar .el-select,
+  .filter-bar .el-button {
+    width: 100% !important;
+  }
 }
 </style>
