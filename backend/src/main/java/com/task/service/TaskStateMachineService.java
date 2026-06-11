@@ -17,6 +17,10 @@ import java.util.Objects;
 /**
  * 任务状态机服务
  * 实现双重确认状态机：PENDING_ACCEPT -> IN_PROGRESS -> PENDING_VERIFY -> COMPLETED
+ *
+ * <p>P2.9: 5 个状态流转方法（acceptTask/submitTask/completeTask/rejectTask/cancelTask）
+ * 启用 MyBatis-Plus 乐观锁（{@code Task.@Version}）。并发更新时后者 updateById 影响行数=0，
+ * 本服务统一转为 409 Conflict BusinessException。</p>
  */
 @Slf4j
 @Service
@@ -51,16 +55,16 @@ public class TaskStateMachineService {
         // 记录开始时间并推算截止时间
         LocalDateTime now = LocalDateTime.now();
         task.setActualStartTime(now);
-        
+
         if (task.getEstimatedDuration() != null && task.getEstimatedDuration() > 0) {
             task.setActualDeadline(now.plusMinutes(task.getEstimatedDuration()));
         }
 
-        // 更新状态
+        // 更新状态（P2.9: updateById 自动带乐观锁 WHERE version=?）
         String fromStatus = task.getStatus();
         task.setStatus("IN_PROGRESS");
         task.setUpdatedAt(now);
-        taskMapper.updateById(task);
+        updateWithOptimisticLock(task);
 
         // 记录状态历史
         recordStatusHistory(taskId, fromStatus, "IN_PROGRESS", operatorId, "确认接收任务");
@@ -89,11 +93,11 @@ public class TaskStateMachineService {
             throw new BusinessException(400, "任务状态不允许提交");
         }
 
-        // 更新状态
+        // 更新状态（P2.9: updateById 自动带乐观锁 WHERE version=?）
         String fromStatus = task.getStatus();
         task.setStatus("PENDING_VERIFY");
         task.setUpdatedAt(LocalDateTime.now());
-        taskMapper.updateById(task);
+        updateWithOptimisticLock(task);
 
         // 记录状态历史
         recordStatusHistory(taskId, fromStatus, "PENDING_VERIFY", operatorId, submitRemark);
@@ -125,12 +129,12 @@ public class TaskStateMachineService {
             throw new BusinessException(400, "任务状态不允许验收");
         }
 
-        // 更新状态
+        // 更新状态（P2.9: updateById 自动带乐观锁 WHERE version=?）
         String fromStatus = task.getStatus();
         task.setStatus("COMPLETED");
         task.setCompletedAt(LocalDateTime.now());
         task.setUpdatedAt(LocalDateTime.now());
-        taskMapper.updateById(task);
+        updateWithOptimisticLock(task);
 
         // 记录状态历史
         recordStatusHistory(taskId, fromStatus, "COMPLETED", operatorId, "验收通过");
@@ -159,11 +163,11 @@ public class TaskStateMachineService {
             throw new BusinessException(400, "任务状态不允许驳回");
         }
 
-        // 更新状态
+        // 更新状态（P2.9: updateById 自动带乐观锁 WHERE version=?）
         String fromStatus = task.getStatus();
         task.setStatus("IN_PROGRESS");
         task.setUpdatedAt(LocalDateTime.now());
-        taskMapper.updateById(task);
+        updateWithOptimisticLock(task);
 
         // 记录状态历史
         recordStatusHistory(taskId, fromStatus, "IN_PROGRESS", operatorId, "驳回：" + rejectReason);
@@ -194,17 +198,36 @@ public class TaskStateMachineService {
             throw new BusinessException(400, "任务已开始，无法取消");
         }
 
-        // 更新状态
+        // 更新状态（P2.9: updateById 自动带乐观锁 WHERE version=?）
         String fromStatus = task.getStatus();
         task.setStatus("WITHDRAWN");
         task.setWithdrawnAt(LocalDateTime.now());
         task.setUpdatedAt(LocalDateTime.now());
-        taskMapper.updateById(task);
+        updateWithOptimisticLock(task);
 
         // 记录状态历史
         recordStatusHistory(taskId, fromStatus, "WITHDRAWN", operatorId, "取消：" + cancelReason);
 
         log.info("任务 {} 已取消", taskId);
+    }
+
+    /**
+     * P2.9: 带乐观锁的 updateById
+     *
+     * <p>MyBatis-Plus 的 {@code OptimisticLockerInnerInterceptor}（在 MybatisPlusConfig 注册）
+     * 会自动将 SQL 改为：
+     * <pre>UPDATE ... SET version=version+1, ... WHERE id=? AND version=?</pre>
+     * 并把实体 version 字段值 +1。如果影响行数=0（说明 version 已被其他请求修改），
+     * 本方法手动抛 409 Conflict BusinessException。</p>
+     *
+     * <p>注：MP 3.5.5 的拦截器本身不抛异常，依赖业务层根据 affected=0 判定冲突。</p>
+     */
+    private void updateWithOptimisticLock(Task task) {
+        int affected = taskMapper.updateById(task);
+        if (affected == 0) {
+            log.warn("[Task {}] 乐观锁冲突：affected=0，version 已被其他请求修改", task.getId());
+            throw new BusinessException(409, "任务已被其他请求修改，请刷新后重试");
+        }
     }
 
     /**

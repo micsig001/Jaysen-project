@@ -59,6 +59,8 @@ class TaskStateMachineServiceTest {
     void setUp() {
         // 默认 stub：insert 不抛异常
         lenient().when(statusHistoryMapper.insert(any(TaskStatusHistory.class))).thenReturn(1);
+        // P2.9: 默认 updateById 影响 1 行（乐观锁命中）
+        lenient().when(taskMapper.updateById(any(Task.class))).thenReturn(1);
     }
 
     // ============================================
@@ -268,6 +270,98 @@ class TaskStateMachineServiceTest {
         assertThatThrownBy(() -> stateMachine.cancelTask(TASK_ID, CREATOR, ""))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("已开始");
+    }
+
+    // ============================================
+    // P2.9: 乐观锁并发冲突测试
+    // MP 3.5.5 的 OptimisticLockerInnerInterceptor 不抛异常，
+    // 改为在 UPDATE 中加 WHERE version=? 让 affected=0，业务层自己判定冲突。
+    // ============================================
+
+    @Test
+    @DisplayName("acceptTask: updateById affected=0（乐观锁冲突）→ 409 (P2.9)")
+    void acceptTask_optimisticLockConflict() {
+        Task task = createTask(TASK_ID, "PENDING_ACCEPT", CREATOR, ASSIGNEE, 60);
+        when(taskMapper.selectById(TASK_ID)).thenReturn(task);
+        // P2.9: 模拟乐观锁拦截器后 version 已变，affected=0
+        when(taskMapper.updateById(any(Task.class))).thenReturn(0);
+
+        assertThatThrownBy(() -> stateMachine.acceptTask(TASK_ID, ASSIGNEE))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getCode()).isEqualTo(409))
+                .hasMessageContaining("已被其他请求修改");
+    }
+
+    @Test
+    @DisplayName("submitTask: affected=0 → 409 (P2.9)")
+    void submitTask_optimisticLockConflict() {
+        Task task = createTask(TASK_ID, "IN_PROGRESS", CREATOR, ASSIGNEE, 60);
+        when(taskMapper.selectById(TASK_ID)).thenReturn(task);
+        when(taskMapper.updateById(any(Task.class))).thenReturn(0);
+
+        assertThatThrownBy(() -> stateMachine.submitTask(TASK_ID, ASSIGNEE, ""))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getCode()).isEqualTo(409));
+    }
+
+    @Test
+    @DisplayName("completeTask: affected=0 → 409 (P2.9)")
+    void completeTask_optimisticLockConflict() {
+        Task task = createTask(TASK_ID, "PENDING_VERIFY", CREATOR, ASSIGNEE, 60);
+        when(taskMapper.selectById(TASK_ID)).thenReturn(task);
+        when(taskMapper.updateById(any(Task.class))).thenReturn(0);
+
+        assertThatThrownBy(() -> stateMachine.completeTask(TASK_ID, CREATOR))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getCode()).isEqualTo(409));
+    }
+
+    @Test
+    @DisplayName("rejectTask: affected=0 → 409 (P2.9)")
+    void rejectTask_optimisticLockConflict() {
+        Task task = createTask(TASK_ID, "PENDING_VERIFY", CREATOR, ASSIGNEE, 60);
+        when(taskMapper.selectById(TASK_ID)).thenReturn(task);
+        when(taskMapper.updateById(any(Task.class))).thenReturn(0);
+
+        assertThatThrownBy(() -> stateMachine.rejectTask(TASK_ID, CREATOR, "原因"))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getCode()).isEqualTo(409));
+    }
+
+    @Test
+    @DisplayName("cancelTask: affected=0 → 409 (P2.9)")
+    void cancelTask_optimisticLockConflict() {
+        Task task = createTask(TASK_ID, "PENDING_ACCEPT", CREATOR, ASSIGNEE, 60);
+        when(taskMapper.selectById(TASK_ID)).thenReturn(task);
+        when(taskMapper.updateById(any(Task.class))).thenReturn(0);
+
+        assertThatThrownBy(() -> stateMachine.cancelTask(TASK_ID, CREATOR, "原因"))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getCode()).isEqualTo(409));
+    }
+
+    @Test
+    @DisplayName("并发场景: 两个 acceptTask 模拟乐观锁，一成功一 409 (P2.9)")
+    void concurrent_acceptTask_oneSucceedsOneFails() {
+        // 用两个独立 task 对象模拟"两次读到的是不同 version"
+        Task task1 = createTask(TASK_ID, "PENDING_ACCEPT", CREATOR, ASSIGNEE, 60);
+        task1.setVersion(0);
+        Task task2 = createTask(TASK_ID, "PENDING_ACCEPT", CREATOR, ASSIGNEE, 60);
+        task2.setVersion(0);
+        when(taskMapper.selectById(TASK_ID)).thenReturn(task1).thenReturn(task2);
+
+        // 第一次调用 updateById 成功（version 0→1）
+        // 第二次调用 updateById affected=0（实际业务中 version 已被前面那次 +1）
+        when(taskMapper.updateById(any(Task.class)))
+                .thenReturn(1)
+                .thenReturn(0);
+
+        // 第一个请求成功
+        stateMachine.acceptTask(TASK_ID, ASSIGNEE);
+        // 第二个请求 409
+        assertThatThrownBy(() -> stateMachine.acceptTask(TASK_ID, ASSIGNEE))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getCode()).isEqualTo(409));
     }
 
     // ============================================
