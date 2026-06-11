@@ -63,6 +63,13 @@ data:
       listen       80 default_server;
       server_name  _;
 
+      # P2.6: 安全头（防止 XSS / clickjacking / MIME 嗅探等）
+      add_header X-Frame-Options "SAMEORIGIN" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+      add_header Content-Security-Policy "default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline';" always;
+
       root   /usr/share/nginx/html;
       index  index.html index.htm;
 
