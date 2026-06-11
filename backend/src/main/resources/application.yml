@@ -49,8 +49,10 @@ mybatis-plus:
       logic-not-delete-value: 0
 
 # JWT Configuration
+# P1.8: 提供开发占位默认 secret（≥32 字符），未设置 JWT_SECRET 环境变量时仍能启动。
+# 生产环境（prod profile）必须显式注入强 secret：长度 < 32 字符时启动失败（见 JwtSecretValidator）。
 jwt:
-  secret: ${JWT_SECRET}
+  secret: ${JWT_SECRET:dev-secret-CHANGE-ME-in-production-min-32-chars}
   expiration: 7200000  # 2 hours in milliseconds
   refresh-expiration: 604800000  # 7 days in milliseconds
 
