@@ -1,0 +1,49 @@
+# 生产环境 profile
+# 启动方式: java -jar app.jar --spring.profiles.active=prod
+# 或环境变量: SPRING_PROFILES_ACTIVE=prod
+# 用途: 覆盖 application.yml 中的"开发友好默认"，启用生产级配置
+
+spring:
+  # MySQL SSL：内部 VPC 可选 `useSSL=true`（防中间人攻击）
+  # 公开云 / 跨网段部署必须 true
+  # required=false 让无 SSL 配置的旧 RDS 也能起（生产建议改为 true）
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:task_system}?useUnicode=true&characterEncoding=utf8&useSSL=${MYSQL_USE_SSL:true}&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&requireSSL=${MYSQL_REQUIRE_SSL:false}
+
+# 安全头：让 Swagger / Actuator 在生产可关
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus  # 生产暴露 prometheus 供 Prometheus 抓取
+  endpoint:
+    health:
+      show-details: never  # 生产不暴露详细健康信息（只 UP/DOWN）
+  info:
+    env:
+      enabled: false  # 生产不暴露 env 变量（避免信息泄露）
+
+# Swagger / OpenAPI 在生产禁用（如需演示环境启用）
+springdoc:
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:false}  # 生产默认关
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:false}
+
+# 业务：归档必须 fail-fast（防多实例数据竞态）
+archive:
+  lock-fail-fast: true
+
+# 日志：生产用 INFO 级别
+logging:
+  level:
+    root: INFO
+    com.task: INFO
+    # 关闭一些启动时的 DEBUG 噪音
+    org.springframework.security: INFO
+    org.hibernate: WARN
+
+# 关闭热部署 / 性能优化（spring.main.lazy-initialization=true 会拖慢首请求）
+spring:
+  main:
+    banner-mode: off  # 生产关 banner 节省启动日志
