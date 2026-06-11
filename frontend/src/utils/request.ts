@@ -37,7 +37,11 @@ const service: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   timeout: 30000,
   headers: {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    // P1.7：CSRF 防护 — 标识此请求来自前端 XHR。
+    // 后端 SecurityConfig 会校验所有 /api/** 路由（公开端点除外）必须带此 header，
+    // 缺 header 返回 403，可阻止浏览器 form/anchor 触发的跨站请求（无自定义 header）。
+    'X-Requested-With': 'XMLHttpRequest'
   }
 })
 

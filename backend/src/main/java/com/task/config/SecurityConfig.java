@@ -53,7 +53,9 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             // 添加JWT过滤器在UsernamePasswordAuthenticationFilter之前
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            // P1.7：CSRF 自定义 header 校验（在 JWT filter 之前执行，对所有请求一次性放行/拦截）
+            .addFilterBefore(new CsrfHeaderFilter(), JwtAuthenticationFilter.class);
 
         return http.build();
     }

@@ -35,6 +35,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * （{@code JwtAuthenticationFilter} 写入 SecurityContext 的形态）一致，
  * 避免 {@code @WithMockUser} 那种 principal 是 User 对象导致 toString() 太长的问题。
  *
+ * <p>P1.7：所有请求统一加 {@code X-Requested-With: XMLHttpRequest} 头，
+ * 通过 {@code CsrfHeaderFilter} 的校验（生产前端 axios 默认带此头）。
+ *
  * @author Mavis
  */
 @AutoConfigureMockMvc
@@ -47,6 +50,13 @@ class UserControllerIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbc;
+
+    /**
+     * P1.7：CSRF 防护头。生产前端 axios 实例默认注入；
+     * 测试侧通过 helper 统一附加，确保所有 MockMvc 请求通过 CsrfHeaderFilter。
+     */
+    private static final String CSRF_HEADER = "X-Requested-With";
+    private static final String CSRF_VALUE = "XMLHttpRequest";
 
     @BeforeEach
     void seedData() {
@@ -105,6 +115,7 @@ class UserControllerIntegrationTest extends AbstractIntegrationTest {
     void listUsers_asAdmin_returns200AndAllRows() throws Exception {
         mockMvc.perform(get("/api/users")
                         .with(asUser("admin-001", "ADMIN"))
+                        .header(CSRF_HEADER, CSRF_VALUE)
                         .param("pageNum", "1")
                         .param("pageSize", "100"))
                 .andExpect(status().isOk())
@@ -115,7 +126,9 @@ class UserControllerIntegrationTest extends AbstractIntegrationTest {
     @Test
     @DisplayName("EMPLOYEE 查列表：被 @PreAuthorize 拒绝 → 403")
     void listUsers_asEmployee_returns403() throws Exception {
-        mockMvc.perform(get("/api/users").with(asUser("emp-001", "EMPLOYEE")))
+        mockMvc.perform(get("/api/users")
+                        .with(asUser("emp-001", "EMPLOYEE"))
+                        .header(CSRF_HEADER, CSRF_VALUE))
                 .andExpect(status().isForbidden());
     }
 
@@ -127,7 +140,8 @@ class UserControllerIntegrationTest extends AbstractIntegrationTest {
     @DisplayName("ADMIN 查 admin-001 详情：200")
     void getUserDetail_asAdmin_self_returns200() throws Exception {
         mockMvc.perform(get("/api/users/{userId}", "admin-001")
-                        .with(asUser("admin-001", "ADMIN")))
+                        .with(asUser("admin-001", "ADMIN"))
+                        .header(CSRF_HEADER, CSRF_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.userId").value("admin-001"))
@@ -138,7 +152,8 @@ class UserControllerIntegrationTest extends AbstractIntegrationTest {
     @DisplayName("查不存在的用户 → body.code=404")
     void getUserDetail_notFound_returns404() throws Exception {
         mockMvc.perform(get("/api/users/{userId}", "ghost")
-                        .with(asUser("admin-001", "ADMIN")))
+                        .with(asUser("admin-001", "ADMIN"))
+                        .header(CSRF_HEADER, CSRF_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(404));
     }
@@ -151,7 +166,8 @@ class UserControllerIntegrationTest extends AbstractIntegrationTest {
     @DisplayName("ADMIN 禁用 emp-001：200 + DB 中 status=0")
     void disableUser_asAdmin_succeeds() throws Exception {
         mockMvc.perform(post("/api/users/{userId}/disable", "emp-001")
-                        .with(asUser("admin-001", "ADMIN")))
+                        .with(asUser("admin-001", "ADMIN"))
+                        .header(CSRF_HEADER, CSRF_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
@@ -165,7 +181,8 @@ class UserControllerIntegrationTest extends AbstractIntegrationTest {
     @DisplayName("ADMIN 禁用自己：业务异常 → body.code=400")
     void disableUser_self_returns400() throws Exception {
         mockMvc.perform(post("/api/users/{userId}/disable", "admin-001")
-                        .with(asUser("admin-001", "ADMIN")))
+                        .with(asUser("admin-001", "ADMIN"))
+                        .header(CSRF_HEADER, CSRF_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(400));
     }
@@ -177,7 +194,8 @@ class UserControllerIntegrationTest extends AbstractIntegrationTest {
         jdbc.update("UPDATE users SET status = 0 WHERE user_id = 'emp-001'");
 
         mockMvc.perform(post("/api/users/{userId}/enable", "emp-001")
-                        .with(asUser("admin-001", "ADMIN")))
+                        .with(asUser("admin-001", "ADMIN"))
+                        .header(CSRF_HEADER, CSRF_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
@@ -190,7 +208,8 @@ class UserControllerIntegrationTest extends AbstractIntegrationTest {
     @DisplayName("EMPLOYEE 调禁用接口：被 @PreAuthorize 拒绝 → 403")
     void disableUser_asEmployee_returns403() throws Exception {
         mockMvc.perform(post("/api/users/{userId}/disable", "mgr-001")
-                        .with(asUser("emp-001", "EMPLOYEE")))
+                        .with(asUser("emp-001", "EMPLOYEE"))
+                        .header(CSRF_HEADER, CSRF_VALUE))
                 .andExpect(status().isForbidden());
     }
 }
