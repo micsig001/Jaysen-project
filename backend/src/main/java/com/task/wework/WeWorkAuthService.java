@@ -139,8 +139,14 @@ public class WeWorkAuthService {
      * @return 新的 Access Token
      */
     public String refreshToken(String refreshToken) {
-        // 验证刷新令牌（validateToken 返回 Claims，null 表示无效/已过期）
-        if (jwtTokenProvider.validateToken(refreshToken) == null) {
+        // 修复（P1.11）：jwtTokenProvider.validateToken() 在 token 无效/过期时
+        // 抛 IllegalArgumentException（不是返回 null）。原先 `if (... == null)`
+        // 是死代码 — 异常直接向上传播，被 controller 顶层 catch 转成 500。
+        // 现在显式捕获并转为 401，让 HTTP 语义正确（401 = 未认证/凭证无效）。
+        try {
+            jwtTokenProvider.validateToken(refreshToken);
+        } catch (IllegalArgumentException e) {
+            log.warn("刷新令牌无效或已过期: {}", e.getMessage());
             throw new BusinessException(401, "刷新令牌无效或已过期");
         }
 
