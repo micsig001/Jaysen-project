@@ -65,14 +65,14 @@
           提交
         </el-button>
         <el-button
-          v-if="task.status === 'PENDING_REVIEW' && isInitiator"
+          v-if="task.status === 'PENDING_VERIFY' && isInitiator"
           type="success"
           @click="handleComplete"
         >
           验收通过
         </el-button>
         <el-button
-          v-if="task.status === 'PENDING_REVIEW' && isInitiator"
+          v-if="task.status === 'PENDING_VERIFY' && isInitiator"
           type="warning"
           @click="handleReject"
         >

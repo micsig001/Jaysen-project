@@ -3,18 +3,16 @@ version: '3.8'
 services:
   # MySQL Database
   mysql:
-    image: mysql:8.0
+    image: docker.m.daocloud.io/library/mysql:8.0
     container_name: task-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-DevPass2026task}
       MYSQL_DATABASE: ${DB_NAME:-task_system}
       TZ: Asia/Shanghai
-    # P2.5: 生产不暴露 3306 到 host，仅本机调试时可取消注释
-    #   本机调试：取消下一行注释，并通过 docker network 直连
-    #   生产环境：保持注释，靠 backend 服务通过 docker network 访问
-    # ports:
-    #   - "127.0.0.1:${DB_PORT:-3306}:3306"
+    # 本机调试模式：暴露 3306 到 host（仅 loopback，不对外）
+    ports:
+      - "127.0.0.1:${DB_PORT:-3306}:3306"
     volumes:
       - mysql-data:/var/lib/mysql
       - ./mysql/init:/docker-entrypoint-initdb.d
@@ -32,18 +30,20 @@ services:
 
   # Redis Cache
   redis:
-    image: redis:7-alpine
+    image: docker.m.daocloud.io/library/redis:7-alpine
     container_name: task-redis
     restart: unless-stopped
-    environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-changeme}
-    # P2.5: 生产不暴露 6379 到 host，仅本机调试时可取消注释
-    #   本机调试：取消下一行注释，并通过 docker network 直连
-    #   生产环境：保持注释，靠 backend 服务通过 docker network 访问
-    # ports:
-    #   - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    # 本地开发：不设密码（注释掉的 requirepass/dev 模式）
+    # P1.9: application.yml 允许 REDIS_PASSWORD 为空，dev 环境无密码也能连
+    # 本机调试模式：暴露 6379 到 host（仅 loopback，不对外）
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     volumes:
       - redis-data:/data
+    # P1.9: Redis密码配置（与application.yml保持一致）
+    # N3: --requirepass 使用 $${REDIS_PASSWORD}（双 $ 阻止 compose 转义，由容器内 shell 展开为 env 值）
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-DevRedis2026task}
     command: >
       redis-server 
       --appendonly yes 
@@ -51,7 +51,7 @@ services:
     networks:
       - task-network
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "$$REDIS_PASSWORD", "ping"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -69,11 +69,14 @@ services:
       DB_PORT: 3306
       DB_NAME: ${DB_NAME:-task_system}
       DB_USERNAME: root
-      DB_PASSWORD: ${DB_PASSWORD:-root}
+      # N4: 默认密码与 mysql service 的 MYSQL_ROOT_PASSWORD 保持一致
+      DB_PASSWORD: ${DB_PASSWORD:-DevPass2026task}
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-changeme}
-      JWT_SECRET: ${JWT_SECRET}
+      # N3: 与 redis service 暴露的 REDIS_PASSWORD 保持一致
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-DevRedis2026task}
+      # N5: 提供开发占位默认值（≥32 字符），生产环境请通过 .env 注入强 secret
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-CHANGE-ME-in-production-min-32-chars}
       WEWORK_CORP_ID: ${WEWORK_CORP_ID:-}
       WEWORK_AGENT_ID: ${WEWORK_AGENT_ID:-}
       WEWORK_SECRET: ${WEWORK_SECRET:-}

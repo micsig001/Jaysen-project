@@ -38,20 +38,31 @@ public class SecurityConfig {
             // 禁用Session(无状态JWT认证)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             // 配置授权规则
-            .authorizeHttpRequests(auth -> auth
-                // 公开端点
-                .requestMatchers("/api/auth/**").permitAll()
-                // 企微 OAuth 回调（GET）
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/auth/wework/callback").permitAll()
-                // 文件下载端点（修复 P0-2：通过 HMAC 签名校验，permitAll 但签名不对会被 FileController 拦截）
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/files/**").permitAll()
-                // Swagger文档(开发环境)
-                .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                // 健康检查端点
-                .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+            .authorizeHttpRequests(auth -> {
+                auth
+                    // 公开端点
+                    .requestMatchers("/api/auth/**").permitAll()
+                    // 企微 OAuth 回调（GET）
+                    .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/auth/wework/callback").permitAll()
+                    // 文件下载端点（修复 P0-2：通过 HMAC 签名校验，permitAll 但签名不对会被 FileController 拦截）
+                    .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/files/**").permitAll()
+                    // Swagger文档(开发环境)
+                    .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                    // 健康检查端点
+                    .requestMatchers("/actuator/health", "/actuator/info").permitAll();
+
+                // N1 双保险：生产环境拒绝 /api/auth/dev-login 端点（即便控制器类被意外注册也拦）
+                String currentProfile = System.getProperty("spring.profiles.active",
+                        System.getenv().getOrDefault("SPRING_PROFILES_ACTIVE", ""));
+                boolean isDevLike = currentProfile.toLowerCase().contains("dev")
+                        || currentProfile.toLowerCase().contains("test");
+                if (!isDevLike) {
+                    // 生产：denyAll 该端点
+                    auth.requestMatchers("/api/auth/dev-login").denyAll();
+                }
                 // 其他所有请求需要认证
-                .anyRequest().authenticated()
-            )
+                auth.anyRequest().authenticated();
+            })
             // 添加JWT过滤器在UsernamePasswordAuthenticationFilter之前
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             // P1.7：CSRF 自定义 header 校验（在 JWT filter 之前执行，对所有请求一次性放行/拦截）
